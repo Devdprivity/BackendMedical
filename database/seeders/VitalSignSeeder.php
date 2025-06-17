@@ -22,107 +22,113 @@ class VitalSignSeeder extends Seeder
             $numRecords = rand(3, 8);
             
             for ($i = 0; $i < $numRecords; $i++) {
-                $recordedAt = Carbon::now()->subDays(rand(1, 90))->addHours(rand(8, 17));
+                $measuredAt = Carbon::now()->subDays(rand(1, 90))->addHours(rand(8, 17));
                 
                 // Generar valores realistas basados en edad y condición
                 $ageGroup = $this->getAgeGroup($patientId);
                 $hasConditions = $this->hasChronicConditions($patientId);
                 
+                // Generar presión arterial como string (ej: "120/80")
+                $systolic = $this->generateSystolicBP($ageGroup, $hasConditions);
+                $diastolic = $this->generateDiastolicBP($ageGroup, $hasConditions);
+                $bloodPressure = $systolic . '/' . $diastolic;
+                
+                // Verificar si ya existe un registro similar
+                $existingVital = VitalSign::where('patient_id', $patientId)
+                    ->where('measured_at', $measuredAt)
+                    ->first();
+                
+                if ($existingVital) {
+                    continue; // Saltar si ya existe
+                }
+                
                 $vital = [
                     'patient_id' => $patientId,
-                    'blood_pressure_systolic' => $this->generateSystolicBP($ageGroup, $hasConditions),
-                    'blood_pressure_diastolic' => $this->generateDiastolicBP($ageGroup, $hasConditions),
-                    'heart_rate' => $this->generateHeartRate($ageGroup, $hasConditions),
-                    'temperature' => $this->generateTemperature(),
-                    'respiratory_rate' => $this->generateRespiratoryRate($ageGroup),
-                    'oxygen_saturation' => $this->generateOxygenSaturation($hasConditions),
                     'weight' => $this->generateWeight($patientId, $ageGroup),
                     'height' => $this->generateHeight($patientId, $ageGroup),
-                    'bmi' => null, // Se calculará automáticamente
-                    'pain_level' => rand(0, 10),
-                    'notes' => $this->generateNotes(),
-                    'recorded_at' => $recordedAt,
-                    'recorded_by' => 'Enfermera ' . ['García', 'Rodríguez', 'López', 'Martínez', 'Silva'][rand(0, 4)],
-                    'created_at' => $recordedAt,
-                    'updated_at' => $recordedAt
+                    'blood_pressure' => $bloodPressure,
+                    'heart_rate' => $this->generateHeartRate($ageGroup, $hasConditions),
+                    'temperature' => $this->generateTemperature(),
+                    'measured_at' => $measuredAt,
+                    'created_at' => now(),
+                    'updated_at' => now()
                 ];
-                
-                // Calcular BMI
-                if ($vital['weight'] && $vital['height']) {
-                    $heightInMeters = $vital['height'] / 100;
-                    $vital['bmi'] = round($vital['weight'] / ($heightInMeters * $heightInMeters), 1);
-                }
                 
                 $vitalSigns[] = $vital;
             }
         }
         
         // Agregar signos vitales recientes para algunos pacientes
+        $today = Carbon::today();
         $recentVitals = [
             [
                 'patient_id' => 1,
-                'blood_pressure_systolic' => 145,
-                'blood_pressure_diastolic' => 95,
+                'weight' => 78.5,
+                'height' => 175.0,
+                'blood_pressure' => '145/95',
                 'heart_rate' => 82,
                 'temperature' => 36.5,
-                'respiratory_rate' => 16,
-                'oxygen_saturation' => 98,
-                'weight' => 78.5,
-                'height' => 175,
-                'bmi' => 25.6,
-                'pain_level' => 2,
-                'notes' => 'Paciente refiere leve cefalea',
-                'recorded_at' => Carbon::now()->subHours(2),
-                'recorded_by' => 'Enfermera García',
-                'created_at' => Carbon::now()->subHours(2),
-                'updated_at' => Carbon::now()->subHours(2)
+                'measured_at' => $today->copy()->subHours(2),
+                'created_at' => now(),
+                'updated_at' => now()
             ],
             [
                 'patient_id' => 2,
-                'blood_pressure_systolic' => 110,
-                'blood_pressure_diastolic' => 70,
+                'weight' => 45.2,
+                'height' => 162.0,
+                'blood_pressure' => '110/70',
                 'heart_rate' => 95,
                 'temperature' => 36.8,
-                'respiratory_rate' => 22,
-                'oxygen_saturation' => 99,
-                'weight' => 45.2,
-                'height' => 162,
-                'bmi' => 17.2,
-                'pain_level' => 0,
-                'notes' => 'Paciente pediátrica activa, signos normales',
-                'recorded_at' => Carbon::now()->subHours(1),
-                'recorded_by' => 'Enfermera Rodríguez',
-                'created_at' => Carbon::now()->subHours(1),
-                'updated_at' => Carbon::now()->subHours(1)
+                'measured_at' => $today->copy()->subHours(1),
+                'created_at' => now(),
+                'updated_at' => now()
             ],
             [
                 'patient_id' => 3,
-                'blood_pressure_systolic' => 160,
-                'blood_pressure_diastolic' => 100,
+                'weight' => 85.3,
+                'height' => 172.0,
+                'blood_pressure' => '160/100',
                 'heart_rate' => 88,
                 'temperature' => 36.2,
-                'respiratory_rate' => 18,
-                'oxygen_saturation' => 96,
-                'weight' => 85.3,
-                'height' => 172,
-                'bmi' => 28.8,
-                'pain_level' => 4,
-                'notes' => 'Hipertensión no controlada, ajustar medicación',
-                'recorded_at' => Carbon::now()->subMinutes(30),
-                'recorded_by' => 'Enfermera López',
-                'created_at' => Carbon::now()->subMinutes(30),
-                'updated_at' => Carbon::now()->subMinutes(30)
+                'measured_at' => $today->copy()->subMinutes(30),
+                'created_at' => now(),
+                'updated_at' => now()
             ]
         ];
         
-        $vitalSigns = array_merge($vitalSigns, $recentVitals);
-        
-        foreach ($vitalSigns as $vitalData) {
-            VitalSign::create($vitalData);
+        // Verificar signos vitales recientes que no existan
+        foreach ($recentVitals as $vital) {
+            $existingVital = VitalSign::where('patient_id', $vital['patient_id'])
+                ->where('measured_at', $vital['measured_at'])
+                ->first();
+            
+            if (!$existingVital) {
+                $vitalSigns[] = $vital;
+            } else {
+                $this->command->info("⚠️  Signos vitales para paciente {$vital['patient_id']} en {$vital['measured_at']} ya existen, saltando...");
+            }
         }
         
-        $this->command->info('✅ Signos vitales creados exitosamente!');
-        $this->command->info('💓 Se crearon ' . count($vitalSigns) . ' registros de signos vitales.');
+        // Insertar signos vitales uno por uno para evitar duplicados
+        $created = 0;
+        foreach ($vitalSigns as $vitalData) {
+            try {
+                // Verificar nuevamente antes de crear
+                $existingVital = VitalSign::where('patient_id', $vitalData['patient_id'])
+                    ->where('measured_at', $vitalData['measured_at'])
+                    ->first();
+                
+                if (!$existingVital) {
+                    VitalSign::create($vitalData);
+                    $created++;
+                }
+            } catch (\Exception $e) {
+                $this->command->warn("⚠️  Error creando signos vitales: " . $e->getMessage());
+            }
+        }
+        
+        $this->command->info("✅ {$created} registros de signos vitales creados exitosamente!");
+        $this->command->info('💓 Se crearon signos vitales para múltiples visitas de pacientes.');
     }
     
     private function getAgeGroup($patientId)
@@ -202,85 +208,53 @@ class VitalSignSeeder extends Seeder
     
     private function generateTemperature()
     {
-        return round(36.0 + (rand(0, 15) / 10), 1);
-    }
-    
-    private function generateRespiratoryRate($ageGroup)
-    {
-        $base = 16;
-        
-        if ($ageGroup === 'pediatric') $base = 24;
-        if ($ageGroup === 'elderly') $base = 18;
-        
-        return $base + rand(-4, 6);
-    }
-    
-    private function generateOxygenSaturation($hasConditions)
-    {
-        $base = 98;
-        
-        if ($hasConditions) $base -= 2;
-        
-        return max(90, $base + rand(-2, 2));
+        // Temperatura normal con pequeñas variaciones
+        return round(36.5 + (rand(-10, 15) / 10), 1);
     }
     
     private function generateWeight($patientId, $ageGroup)
     {
-        // Pesos base aproximados por paciente
+        // Pesos base realistas por paciente
         $baseWeights = [
             1 => 78,   // Juan Carlos - adulto
-            2 => 58,   // Ana María - adulta joven
-            3 => 85,   // Carlos Eduardo - adulto con diabetes
+            2 => 45,   // Ana María - adulta delgada
+            3 => 85,   // Carlos Eduardo - adulto con sobrepeso
             4 => 62,   // Laura Patricia - adulta
-            5 => 82,   // Roberto - adulto mayor
-            6 => 40,   // Sofía - niña
-            7 => 70,   // Andrés Felipe - joven
+            5 => 72,   // Roberto - adulto mayor
+            6 => 50,   // Sofía - adolescente
+            7 => 70,   // Andrés Felipe - adulto joven
             8 => 68,   // Patricia - adulta
-            9 => 75,   // Diego Alejandro - adulto
-            10 => 28   // Valentina - niña
+            9 => 80,   // Diego Alejandro - adulto
+            10 => 32   // Valentina - niña
         ];
         
-        $base = $baseWeights[$patientId] ?? 70;
-        return $base + rand(-5, 5);
+        $baseWeight = $baseWeights[$patientId] ?? 70;
+        return $baseWeight + rand(-3, 3) + (rand(0, 10) / 10); // Variación pequeña
     }
     
     private function generateHeight($patientId, $ageGroup)
     {
-        // Alturas base aproximadas por paciente
+        // Alturas base por paciente (en cm)
         $baseHeights = [
             1 => 175,  // Juan Carlos
             2 => 162,  // Ana María
             3 => 172,  // Carlos Eduardo
             4 => 165,  // Laura Patricia
-            5 => 178,  // Roberto
-            6 => 145,  // Sofía
-            7 => 180,  // Andrés Felipe
+            5 => 168,  // Roberto
+            6 => 155,  // Sofía - adolescente
+            7 => 178,  // Andrés Felipe
             8 => 160,  // Patricia
-            9 => 174,  // Diego Alejandro
-            10 => 120  // Valentina
+            9 => 180,  // Diego Alejandro
+            10 => 135  // Valentina - niña
         ];
         
-        return $baseHeights[$patientId] ?? 170;
-    }
-    
-    private function generateNotes()
-    {
-        $notes = [
-            'Paciente colaborador',
-            'Signos vitales estables',
-            'Sin síntomas agudos',
-            'Paciente refiere sentirse bien',
-            'Control de rutina',
-            'Leve ansiedad durante la toma',
-            'Paciente en reposo',
-            'Post-ejercicio',
-            'Pre-consulta médica',
-            'Control post-medicación',
-            '',
-            '',
-            ''
-        ];
+        $baseHeight = $baseHeights[$patientId] ?? 170;
         
-        return $notes[array_rand($notes)];
+        // Para niños, la altura puede variar más (crecimiento)
+        if ($ageGroup === 'pediatric') {
+            return $baseHeight + rand(-2, 5);
+        }
+        
+        return $baseHeight; // Adultos mantienen altura constante
     }
 } 
