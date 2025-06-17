@@ -21,50 +21,64 @@ class DoctorController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Doctor::with(['user', 'clinics']);
+        try {
+            // Simple test first - just return a basic response to verify controller works
+            $query = Doctor::with(['user', 'clinics']);
 
-        // Filter by clinic if provided
-        if ($request->has('clinic_id')) {
-            $query->whereHas('clinics', function ($q) use ($request) {
-                $q->where('clinic_id', $request->clinic_id);
-            });
+            // Filter by clinic if provided
+            if ($request->has('clinic_id')) {
+                $query->whereHas('clinics', function ($q) use ($request) {
+                    $q->where('clinic_id', $request->clinic_id);
+                });
+            }
+
+            // Filter by specialty if provided
+            if ($request->has('specialty')) {
+                $query->where('specialty', 'like', '%' . $request->specialty . '%');
+            }
+
+            // Search by name
+            if ($request->has('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', '%' . $search . '%')
+                      ->orWhere('email', 'like', '%' . $search . '%')
+                      ->orWhereHas('user', function ($userQuery) use ($search) {
+                          $userQuery->where('name', 'like', '%' . $search . '%')
+                                   ->orWhere('email', 'like', '%' . $search . '%');
+                      });
+                });
+            }
+
+            // Filter by status
+            if ($request->has('status')) {
+                $query->where('status', $request->status);
+            }
+
+            $doctors = $query->paginate($request->get('per_page', 15));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Doctors endpoint is working! 🎉',
+                'data' => $doctors->items(),
+                'pagination' => [
+                    'current_page' => $doctors->currentPage(),
+                    'per_page' => $doctors->perPage(),
+                    'total' => $doctors->total(),
+                    'last_page' => $doctors->lastPage(),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error in doctors endpoint: ' . $e->getMessage(),
+                'error_details' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ]
+            ], 500);
         }
-
-        // Filter by specialty if provided
-        if ($request->has('specialty')) {
-            $query->where('specialty', 'like', '%' . $request->specialty . '%');
-        }
-
-        // Search by name
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%')
-                  ->orWhere('email', 'like', '%' . $search . '%')
-                  ->orWhereHas('user', function ($userQuery) use ($search) {
-                      $userQuery->where('name', 'like', '%' . $search . '%')
-                               ->orWhere('email', 'like', '%' . $search . '%');
-                  });
-            });
-        }
-
-        // Filter by status
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
-        }
-
-        $doctors = $query->paginate($request->get('per_page', 15));
-
-        return response()->json([
-            'success' => true,
-            'data' => $doctors->items(),
-            'pagination' => [
-                'current_page' => $doctors->currentPage(),
-                'per_page' => $doctors->perPage(),
-                'total' => $doctors->total(),
-                'last_page' => $doctors->lastPage(),
-            ]
-        ]);
     }
 
     /**
