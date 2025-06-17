@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\MedicalExam;
-use App\Models\ExamResult;
 use Carbon\Carbon;
 
 class MedicalExamSeeder extends Seeder
@@ -48,7 +47,23 @@ class MedicalExamSeeder extends Seeder
             'Holter de 24 horas'
         ];
 
-        $instructions = [
+        $laboratoryAreas = [
+            'Laboratorio Clínico',
+            'Hematología',
+            'Bioquímica',
+            'Microbiología',
+            'Radiología',
+            'Cardiología',
+            'Ecografía',
+            'Tomografía',
+            'Resonancia Magnética',
+            'Mamografía',
+            'Endoscopia',
+            'Patología',
+            'Neumología'
+        ];
+
+        $preparations = [
             'Paciente debe venir en ayunas de 12 horas',
             'No tomar medicamentos antes del examen',
             'Traer exámenes previos para comparación',
@@ -59,195 +74,138 @@ class MedicalExamSeeder extends Seeder
             'Suspender anticoagulantes según indicación médica',
             'Traer acompañante',
             'Usar ropa cómoda y sin metales',
-            '',
-            '',
-            ''
+            null,
+            null,
+            null
         ];
 
         $exams = [];
-        $examResults = [];
 
         for ($i = 1; $i <= 50; $i++) {
-            $orderedDate = Carbon::now()->subDays(rand(1, 30));
-            $scheduledDate = $orderedDate->copy()->addDays(rand(1, 7));
+            $scheduledDate = Carbon::now()->addDays(rand(1, 30))->setTime(rand(8, 16), [0, 30][rand(0, 1)]);
+            
+            // Algunos exámenes en el pasado (completados)
+            if (rand(1, 100) <= 40) {
+                $scheduledDate = Carbon::now()->subDays(rand(1, 15))->setTime(rand(8, 16), [0, 30][rand(0, 1)]);
+            }
             
             // Determinar estado basado en las fechas
-            $status = 'ordered';
-            $performedDate = null;
-            
+            $status = 'scheduled';
             if ($scheduledDate->isPast()) {
-                $status = ['completed', 'pending', 'cancelled'][rand(0, 2)];
+                $status = ['completed', 'cancelled'][rand(0, 1)];
                 if (rand(1, 100) <= 85) $status = 'completed'; // 85% completados
-                
-                if ($status === 'completed') {
-                    $performedDate = $scheduledDate->copy()->addDays(rand(0, 2));
-                }
             } elseif ($scheduledDate->isToday()) {
                 $status = ['scheduled', 'in_progress', 'completed'][rand(0, 2)];
-            } else {
-                $status = 'scheduled';
             }
 
-            $urgencyLevels = ['routine', 'urgent', 'stat'];
-            $urgency = $urgencyLevels[rand(0, 2)];
-            if (rand(1, 100) <= 70) $urgency = 'routine'; // 70% rutina
+            $patientId = rand(1, 10);
+            $doctorId = rand(1, 10);
+            $examType = $examTypes[array_rand($examTypes)];
+            
+            // Verificar si ya existe un examen similar
+            $existingExam = MedicalExam::where('patient_id', $patientId)
+                ->where('requesting_doctor_id', $doctorId)
+                ->where('exam_type', $examType)
+                ->where('scheduled_date', $scheduledDate)
+                ->first();
+            
+            if ($existingExam) {
+                continue; // Saltar si ya existe
+            }
 
             $exam = [
-                'patient_id' => rand(1, 10),
-                'doctor_id' => rand(1, 10),
-                'exam_type' => $examTypes[array_rand($examTypes)],
-                'ordered_date' => $orderedDate->format('Y-m-d'),
-                'scheduled_date' => $scheduledDate->format('Y-m-d'),
-                'performed_date' => $performedDate ? $performedDate->format('Y-m-d') : null,
+                'patient_id' => $patientId,
+                'requesting_doctor_id' => $doctorId,
+                'exam_type' => $examType,
+                'scheduled_date' => $scheduledDate,
+                'laboratory_area' => $laboratoryAreas[array_rand($laboratoryAreas)],
+                'preparation_required' => $preparations[array_rand($preparations)],
+                'notes' => rand(1, 100) <= 30 ? 'Examen de control' : null,
                 'status' => $status,
-                'urgency' => $urgency,
-                'instructions' => $instructions[array_rand($instructions)],
-                'notes' => rand(1, 100) <= 30 ? 'Examen de control' : '',
-                'created_at' => $orderedDate,
+                'created_at' => now(),
                 'updated_at' => now()
             ];
 
             $exams[] = $exam;
+        }
 
-            // Crear resultados para exámenes completados
-            if ($status === 'completed' && $performedDate) {
-                $examId = $i; // Asumiendo que los IDs serán secuenciales
-                
-                $result = $this->generateExamResult($exam['exam_type'], $examId, $performedDate);
-                if ($result) {
-                    $examResults[] = $result;
-                }
+        // Agregar algunos exámenes específicos para hoy
+        $today = Carbon::today();
+        $todayExams = [
+            [
+                'patient_id' => 1,
+                'requesting_doctor_id' => 1,
+                'exam_type' => 'Hemograma completo',
+                'scheduled_date' => $today->copy()->setTime(9, 0),
+                'laboratory_area' => 'Laboratorio Clínico',
+                'preparation_required' => 'Paciente debe venir en ayunas de 12 horas',
+                'notes' => 'Control post-tratamiento',
+                'status' => 'scheduled',
+                'created_at' => now(),
+                'updated_at' => now()
+            ],
+            [
+                'patient_id' => 2,
+                'requesting_doctor_id' => 2,
+                'exam_type' => 'Radiografía de tórax',
+                'scheduled_date' => $today->copy()->setTime(11, 30),
+                'laboratory_area' => 'Radiología',
+                'preparation_required' => 'Usar ropa cómoda y sin metales',
+                'notes' => 'Evaluación pre-quirúrgica',
+                'status' => 'in_progress',
+                'created_at' => now(),
+                'updated_at' => now()
+            ],
+            [
+                'patient_id' => 3,
+                'requesting_doctor_id' => 3,
+                'exam_type' => 'Electrocardiograma',
+                'scheduled_date' => $today->copy()->setTime(14, 0),
+                'laboratory_area' => 'Cardiología',
+                'preparation_required' => null,
+                'notes' => 'Control cardiológico rutinario',
+                'status' => 'completed',
+                'created_at' => now(),
+                'updated_at' => now()
+            ]
+        ];
+
+        // Verificar exámenes específicos de hoy que no existan
+        foreach ($todayExams as $exam) {
+            $existingExam = MedicalExam::where('patient_id', $exam['patient_id'])
+                ->where('requesting_doctor_id', $exam['requesting_doctor_id'])
+                ->where('exam_type', $exam['exam_type'])
+                ->where('scheduled_date', $exam['scheduled_date'])
+                ->first();
+            
+            if (!$existingExam) {
+                $exams[] = $exam;
+            } else {
+                $this->command->info("⚠️  Examen {$exam['exam_type']} para paciente {$exam['patient_id']} ya existe, saltando...");
             }
         }
 
-        // Insertar exámenes
+        // Insertar exámenes uno por uno para evitar duplicados
+        $created = 0;
         foreach ($exams as $examData) {
-            MedicalExam::create($examData);
+            try {
+                // Verificar nuevamente antes de crear
+                $existingExam = MedicalExam::where('patient_id', $examData['patient_id'])
+                    ->where('requesting_doctor_id', $examData['requesting_doctor_id'])
+                    ->where('exam_type', $examData['exam_type'])
+                    ->where('scheduled_date', $examData['scheduled_date'])
+                    ->first();
+                
+                if (!$existingExam) {
+                    MedicalExam::create($examData);
+                    $created++;
+                }
+            } catch (\Exception $e) {
+                $this->command->warn("⚠️  Error creando examen: " . $e->getMessage());
+            }
         }
 
-        // Insertar resultados
-        foreach ($examResults as $resultData) {
-            ExamResult::create($resultData);
-        }
-
-        $this->command->info('✅ Exámenes médicos y resultados creados exitosamente!');
-        $this->command->info('🧪 Se crearon ' . count($exams) . ' exámenes con ' . count($examResults) . ' resultados.');
-    }
-
-    private function generateExamResult($examType, $examId, $performedDate)
-    {
-        $technicianNames = [
-            'Laboratorista García',
-            'Tec. Martínez',
-            'Lab. Rodríguez',
-            'Tec. López',
-            'Dr. Silva (Radiólogo)',
-            'Dra. Morales (Patóloga)',
-            'Tec. Vargas',
-            'Lab. Castro'
-        ];
-
-        $normalFindings = [
-            'Valores dentro de parámetros normales',
-            'Estudio normal',
-            'Sin alteraciones significativas',
-            'Resultados satisfactorios',
-            'Dentro de límites normales',
-            'Examen normal para la edad'
-        ];
-
-        $abnormalFindings = [
-            'Valores ligeramente elevados',
-            'Se observan alteraciones leves',
-            'Requiere seguimiento médico',
-            'Hallazgos compatibles con proceso inflamatorio',
-            'Alteraciones que requieren evaluación clínica',
-            'Valores fuera del rango normal'
-        ];
-
-        switch ($examType) {
-            case 'Hemograma completo':
-                $isNormal = rand(1, 100) <= 75;
-                return [
-                    'medical_exam_id' => $examId,
-                    'results' => $isNormal ? 
-                        'Hemoglobina: 14.2 g/dL, Hematocrito: 42%, Leucocitos: 7,500/μL, Plaquetas: 280,000/μL' :
-                        'Hemoglobina: 10.8 g/dL (bajo), Hematocrito: 32%, Leucocitos: 12,000/μL (elevado), Plaquetas: 180,000/μL',
-                    'interpretation' => $isNormal ? $normalFindings[array_rand($normalFindings)] : $abnormalFindings[array_rand($abnormalFindings)],
-                    'performed_date' => $performedDate,
-                    'technician_name' => $technicianNames[array_rand($technicianNames)],
-                    'created_at' => $performedDate,
-                    'updated_at' => now()
-                ];
-
-            case 'Química sanguínea':
-                $isNormal = rand(1, 100) <= 70;
-                return [
-                    'medical_exam_id' => $examId,
-                    'results' => $isNormal ? 
-                        'Glucosa: 95 mg/dL, Creatinina: 0.9 mg/dL, BUN: 15 mg/dL, Ácido úrico: 4.2 mg/dL' :
-                        'Glucosa: 165 mg/dL (elevada), Creatinina: 1.4 mg/dL (elevada), BUN: 25 mg/dL, Ácido úrico: 7.8 mg/dL',
-                    'interpretation' => $isNormal ? $normalFindings[array_rand($normalFindings)] : 'Hiperglucemia y función renal alterada, requiere evaluación médica',
-                    'performed_date' => $performedDate,
-                    'technician_name' => $technicianNames[array_rand($technicianNames)],
-                    'created_at' => $performedDate,
-                    'updated_at' => now()
-                ];
-
-            case 'Radiografía de tórax':
-                $isNormal = rand(1, 100) <= 80;
-                return [
-                    'medical_exam_id' => $examId,
-                    'results' => $isNormal ? 
-                        'Campos pulmonares libres, silueta cardíaca normal, sin infiltrados' :
-                        'Infiltrado en lóbulo inferior derecho, silueta cardíaca aumentada',
-                    'interpretation' => $isNormal ? 'Radiografía de tórax normal' : 'Hallazgos sugestivos de proceso infeccioso pulmonar',
-                    'performed_date' => $performedDate,
-                    'technician_name' => $technicianNames[array_rand($technicianNames)],
-                    'created_at' => $performedDate,
-                    'updated_at' => now()
-                ];
-
-            case 'Electrocardiograma':
-                $isNormal = rand(1, 100) <= 85;
-                return [
-                    'medical_exam_id' => $examId,
-                    'results' => $isNormal ? 
-                        'Ritmo sinusal, FC: 72 lpm, intervalos normales, sin alteraciones del ST-T' :
-                        'Ritmo sinusal, FC: 95 lpm, bloqueo incompleto de rama derecha, alteraciones inespecíficas del ST',
-                    'interpretation' => $isNormal ? 'ECG normal' : 'Alteraciones menores del sistema de conducción',
-                    'performed_date' => $performedDate,
-                    'technician_name' => $technicianNames[array_rand($technicianNames)],
-                    'created_at' => $performedDate,
-                    'updated_at' => now()
-                ];
-
-            case 'Examen general de orina':
-                $isNormal = rand(1, 100) <= 80;
-                return [
-                    'medical_exam_id' => $examId,
-                    'results' => $isNormal ? 
-                        'Color amarillo claro, densidad 1.020, proteínas negativas, glucosa negativa, leucocitos 2-3 por campo' :
-                        'Color amarillo oscuro, densidad 1.028, proteínas +, glucosa ++, leucocitos 15-20 por campo',
-                    'interpretation' => $isNormal ? $normalFindings[array_rand($normalFindings)] : 'Proteinuria y glucosuria, posible infección urinaria',
-                    'performed_date' => $performedDate,
-                    'technician_name' => $technicianNames[array_rand($technicianNames)],
-                    'created_at' => $performedDate,
-                    'updated_at' => now()
-                ];
-
-            default:
-                // Para otros tipos de exámenes, generar resultado genérico
-                $isNormal = rand(1, 100) <= 75;
-                return [
-                    'medical_exam_id' => $examId,
-                    'results' => $isNormal ? 'Estudio realizado sin complicaciones' : 'Se observan hallazgos que requieren correlación clínica',
-                    'interpretation' => $isNormal ? $normalFindings[array_rand($normalFindings)] : $abnormalFindings[array_rand($abnormalFindings)],
-                    'performed_date' => $performedDate,
-                    'technician_name' => $technicianNames[array_rand($technicianNames)],
-                    'created_at' => $performedDate,
-                    'updated_at' => now()
-                ];
-        }
+        $this->command->info("✅ {$created} exámenes médicos creados exitosamente!");
+        $this->command->info('🧪 Se crearon exámenes programados para las próximas semanas incluyendo algunos para hoy.');
     }
 } 
