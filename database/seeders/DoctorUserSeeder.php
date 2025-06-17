@@ -6,6 +6,7 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\Doctor;
+use App\Models\Clinic;
 use Illuminate\Support\Facades\Hash;
 
 class DoctorUserSeeder extends Seeder
@@ -26,23 +27,36 @@ class DoctorUserSeeder extends Seeder
                     'email_verified_at' => now(),
                 ],
                 'doctor' => [
+                    'name' => 'Dr. Carlos Rodríguez',
                     'specialty' => 'Cardiología',
                     'license_number' => 'MD-CAR-001',
-                    'clinic_id' => 1,
+                    'email' => 'carlos.rodriguez@clinica.com',
                     'phone' => '555-1001',
-                    'education' => 'MD Universidad Nacional, Especialización en Cardiología',
+                    'emergency_phone' => '555-9001',
+                    'address' => 'Calle 123 #45-67, Bogotá, Colombia',
+                    'education' => [
+                        'MD Universidad Nacional - Medicina General',
+                        'Especialización en Cardiología - Hospital San Juan de Dios'
+                    ],
+                    'certifications' => [
+                        'Certificado en Cardiología Intervencionista',
+                        'Certificado en Ecocardiografía'
+                    ],
+                    'languages' => ['Español', 'Inglés'],
                     'experience_years' => 15,
-                    'consultation_fee' => 120.00,
-                    'schedule' => json_encode([
-                        'monday' => '08:00-16:00',
-                        'tuesday' => '08:00-16:00',
-                        'wednesday' => '08:00-16:00',
-                        'thursday' => '08:00-16:00',
-                        'friday' => '08:00-14:00',
-                        'saturday' => 'off',
-                        'sunday' => 'off'
-                    ]),
-                    'bio' => 'Especialista en cardiología con 15 años de experiencia en diagnóstico y tratamiento de enfermedades cardiovasculares.'
+                    'status' => 'active',
+                    'bio' => 'Especialista en cardiología con 15 años de experiencia en diagnóstico y tratamiento de enfermedades cardiovasculares.',
+                    'rating' => 4.8
+                ],
+                'clinic_id' => 1,
+                'schedule' => [
+                    'monday' => '08:00-16:00',
+                    'tuesday' => '08:00-16:00',
+                    'wednesday' => '08:00-16:00',
+                    'thursday' => '08:00-16:00',
+                    'friday' => '08:00-14:00',
+                    'saturday' => 'off',
+                    'sunday' => 'off'
                 ]
             ],
             [
@@ -55,23 +69,36 @@ class DoctorUserSeeder extends Seeder
                     'email_verified_at' => now(),
                 ],
                 'doctor' => [
+                    'name' => 'Dra. María González',
                     'specialty' => 'Pediatría',
                     'license_number' => 'MD-PED-002',
-                    'clinic_id' => 4,
+                    'email' => 'maria.gonzalez@clinica.com',
                     'phone' => '555-1002',
-                    'education' => 'MD Universidad Javeriana, Especialización en Pediatría',
+                    'emergency_phone' => '555-9002',
+                    'address' => 'Carrera 45 #23-89, Medellín, Colombia',
+                    'education' => [
+                        'MD Universidad Javeriana - Medicina General',
+                        'Especialización en Pediatría - Hospital Infantil'
+                    ],
+                    'certifications' => [
+                        'Certificado en Pediatría General',
+                        'Certificado en Desarrollo Infantil'
+                    ],
+                    'languages' => ['Español', 'Inglés'],
                     'experience_years' => 12,
-                    'consultation_fee' => 100.00,
-                    'schedule' => json_encode([
-                        'monday' => '07:00-15:00',
-                        'tuesday' => '07:00-15:00',
-                        'wednesday' => '07:00-15:00',
-                        'thursday' => '07:00-15:00',
-                        'friday' => '07:00-15:00',
-                        'saturday' => '08:00-12:00',
-                        'sunday' => 'off'
-                    ]),
-                    'bio' => 'Pediatra con amplia experiencia en cuidado integral de niños y adolescentes, especializada en desarrollo infantil.'
+                    'status' => 'active',
+                    'bio' => 'Pediatra con amplia experiencia en cuidado integral de niños y adolescentes, especializada en desarrollo infantil.',
+                    'rating' => 4.9
+                ],
+                'clinic_id' => 4,
+                'schedule' => [
+                    'monday' => '07:00-15:00',
+                    'tuesday' => '07:00-15:00',
+                    'wednesday' => '07:00-15:00',
+                    'thursday' => '07:00-15:00',
+                    'friday' => '07:00-15:00',
+                    'saturday' => '08:00-12:00',
+                    'sunday' => 'off'
                 ]
             ],
             [
@@ -84,23 +111,36 @@ class DoctorUserSeeder extends Seeder
                     'email_verified_at' => now(),
                 ],
                 'doctor' => [
+                    'name' => 'Dr. Luis Martínez',
                     'specialty' => 'Cirugía General',
                     'license_number' => 'MD-CIR-003',
-                    'clinic_id' => 2,
+                    'email' => 'luis.martinez@clinica.com',
                     'phone' => '555-1003',
-                    'education' => 'MD Universidad del Rosario, Especialización en Cirugía General',
+                    'emergency_phone' => '555-9003',
+                    'address' => 'Avenida 68 #12-34, Bogotá, Colombia',
+                    'education' => [
+                        'MD Universidad del Rosario - Medicina General',
+                        'Especialización en Cirugía General - Hospital Militar'
+                    ],
+                    'certifications' => [
+                        'Certificado en Cirugía Laparoscópica',
+                        'Certificado en Cirugía de Emergencia'
+                    ],
+                    'languages' => ['Español', 'Inglés', 'Francés'],
                     'experience_years' => 20,
-                    'consultation_fee' => 150.00,
-                    'schedule' => json_encode([
-                        'monday' => '06:00-14:00',
-                        'tuesday' => '06:00-14:00',
-                        'wednesday' => '06:00-14:00',
-                        'thursday' => '06:00-14:00',
-                        'friday' => '06:00-12:00',
-                        'saturday' => 'on-call',
-                        'sunday' => 'on-call'
-                    ]),
-                    'bio' => 'Cirujano general con 20 años de experiencia en procedimientos quirúrgicos complejos y cirugía laparoscópica.'
+                    'status' => 'active',
+                    'bio' => 'Cirujano general con 20 años de experiencia en procedimientos quirúrgicos complejos y cirugía laparoscópica.',
+                    'rating' => 4.7
+                ],
+                'clinic_id' => 2,
+                'schedule' => [
+                    'monday' => '06:00-14:00',
+                    'tuesday' => '06:00-14:00',
+                    'wednesday' => '06:00-14:00',
+                    'thursday' => '06:00-14:00',
+                    'friday' => '06:00-12:00',
+                    'saturday' => 'on-call',
+                    'sunday' => 'on-call'
                 ]
             ],
             [
@@ -113,23 +153,36 @@ class DoctorUserSeeder extends Seeder
                     'email_verified_at' => now(),
                 ],
                 'doctor' => [
+                    'name' => 'Dra. Ana Pérez',
                     'specialty' => 'Ginecología',
                     'license_number' => 'MD-GIN-004',
-                    'clinic_id' => 1,
+                    'email' => 'ana.perez@clinica.com',
                     'phone' => '555-1004',
-                    'education' => 'MD Universidad de La Sabana, Especialización en Ginecología',
+                    'emergency_phone' => '555-9004',
+                    'address' => 'Calle 72 #11-45, Bogotá, Colombia',
+                    'education' => [
+                        'MD Universidad de La Sabana - Medicina General',
+                        'Especialización en Ginecología - Hospital de la Mujer'
+                    ],
+                    'certifications' => [
+                        'Certificado en Ginecología Oncológica',
+                        'Certificado en Cirugía Ginecológica Mínimamente Invasiva'
+                    ],
+                    'languages' => ['Español', 'Inglés'],
                     'experience_years' => 10,
-                    'consultation_fee' => 110.00,
-                    'schedule' => json_encode([
-                        'monday' => '08:00-17:00',
-                        'tuesday' => '08:00-17:00',
-                        'wednesday' => '08:00-17:00',
-                        'thursday' => '08:00-17:00',
-                        'friday' => '08:00-16:00',
-                        'saturday' => 'off',
-                        'sunday' => 'off'
-                    ]),
-                    'bio' => 'Ginecóloga especializada en salud reproductiva femenina, control prenatal y cirugía ginecológica mínimamente invasiva.'
+                    'status' => 'active',
+                    'bio' => 'Ginecóloga especializada en salud reproductiva femenina, control prenatal y cirugía ginecológica mínimamente invasiva.',
+                    'rating' => 4.6
+                ],
+                'clinic_id' => 1,
+                'schedule' => [
+                    'monday' => '08:00-17:00',
+                    'tuesday' => '08:00-17:00',
+                    'wednesday' => '08:00-17:00',
+                    'thursday' => '08:00-17:00',
+                    'friday' => '08:00-16:00',
+                    'saturday' => 'off',
+                    'sunday' => 'off'
                 ]
             ],
             [
@@ -142,23 +195,36 @@ class DoctorUserSeeder extends Seeder
                     'email_verified_at' => now(),
                 ],
                 'doctor' => [
+                    'name' => 'Dr. Roberto Silva',
                     'specialty' => 'Neurología',
                     'license_number' => 'MD-NEU-005',
-                    'clinic_id' => 2,
+                    'email' => 'roberto.silva@clinica.com',
                     'phone' => '555-1005',
-                    'education' => 'MD Universidad Pontificia Bolivariana, Especialización en Neurología',
+                    'emergency_phone' => '555-9005',
+                    'address' => 'Carrera 15 #85-23, Bogotá, Colombia',
+                    'education' => [
+                        'MD Universidad Pontificia Bolivariana - Medicina General',
+                        'Especialización en Neurología - Instituto de Neurociencias'
+                    ],
+                    'certifications' => [
+                        'Certificado en Epileptología',
+                        'Certificado en Neurofisiología Clínica'
+                    ],
+                    'languages' => ['Español', 'Inglés', 'Alemán'],
                     'experience_years' => 18,
-                    'consultation_fee' => 140.00,
-                    'schedule' => json_encode([
-                        'monday' => '09:00-17:00',
-                        'tuesday' => '09:00-17:00',
-                        'wednesday' => '09:00-17:00',
-                        'thursday' => '09:00-17:00',
-                        'friday' => '09:00-15:00',
-                        'saturday' => 'off',
-                        'sunday' => 'off'
-                    ]),
-                    'bio' => 'Neurólogo con experiencia en diagnóstico y tratamiento de trastornos del sistema nervioso, especialista en epilepsia.'
+                    'status' => 'active',
+                    'bio' => 'Neurólogo con experiencia en diagnóstico y tratamiento de trastornos del sistema nervioso, especialista en epilepsia.',
+                    'rating' => 4.8
+                ],
+                'clinic_id' => 2,
+                'schedule' => [
+                    'monday' => '09:00-17:00',
+                    'tuesday' => '09:00-17:00',
+                    'wednesday' => '09:00-17:00',
+                    'thursday' => '09:00-17:00',
+                    'friday' => '09:00-15:00',
+                    'saturday' => 'off',
+                    'sunday' => 'off'
                 ]
             ],
             [
@@ -171,23 +237,36 @@ class DoctorUserSeeder extends Seeder
                     'email_verified_at' => now(),
                 ],
                 'doctor' => [
+                    'name' => 'Dra. Patricia Morales',
                     'specialty' => 'Dermatología',
                     'license_number' => 'MD-DER-006',
-                    'clinic_id' => 3,
+                    'email' => 'patricia.morales@clinica.com',
                     'phone' => '555-1006',
-                    'education' => 'MD Universidad El Bosque, Especialización en Dermatología',
+                    'emergency_phone' => '555-9006',
+                    'address' => 'Calle 93 #14-28, Bogotá, Colombia',
+                    'education' => [
+                        'MD Universidad El Bosque - Medicina General',
+                        'Especialización en Dermatología - Hospital Militar'
+                    ],
+                    'certifications' => [
+                        'Certificado en Dermatología Estética',
+                        'Certificado en Dermatología Pediátrica'
+                    ],
+                    'languages' => ['Español', 'Inglés'],
                     'experience_years' => 8,
-                    'consultation_fee' => 95.00,
-                    'schedule' => json_encode([
-                        'monday' => '08:00-16:00',
-                        'tuesday' => '08:00-16:00',
-                        'wednesday' => '08:00-16:00',
-                        'thursday' => '08:00-16:00',
-                        'friday' => '08:00-16:00',
-                        'saturday' => '09:00-13:00',
-                        'sunday' => 'off'
-                    ]),
-                    'bio' => 'Dermatóloga especializada en enfermedades de la piel, dermatología estética y dermatología pediátrica.'
+                    'status' => 'active',
+                    'bio' => 'Dermatóloga especializada en enfermedades de la piel, dermatología estética y dermatología pediátrica.',
+                    'rating' => 4.5
+                ],
+                'clinic_id' => 3,
+                'schedule' => [
+                    'monday' => '08:00-16:00',
+                    'tuesday' => '08:00-16:00',
+                    'wednesday' => '08:00-16:00',
+                    'thursday' => '08:00-16:00',
+                    'friday' => '08:00-16:00',
+                    'saturday' => '09:00-13:00',
+                    'sunday' => 'off'
                 ]
             ],
             [
@@ -200,23 +279,36 @@ class DoctorUserSeeder extends Seeder
                     'email_verified_at' => now(),
                 ],
                 'doctor' => [
+                    'name' => 'Dr. Fernando Castro',
                     'specialty' => 'Traumatología',
                     'license_number' => 'MD-TRA-007',
-                    'clinic_id' => 2,
+                    'email' => 'fernando.castro@clinica.com',
                     'phone' => '555-1007',
-                    'education' => 'MD Universidad Militar, Especialización en Traumatología',
+                    'emergency_phone' => '555-9007',
+                    'address' => 'Avenida 19 #104-35, Bogotá, Colombia',
+                    'education' => [
+                        'MD Universidad Militar - Medicina General',
+                        'Especialización en Traumatología - Hospital Militar'
+                    ],
+                    'certifications' => [
+                        'Certificado en Cirugía Ortopédica',
+                        'Certificado en Traumatología Deportiva'
+                    ],
+                    'languages' => ['Español', 'Inglés'],
                     'experience_years' => 22,
-                    'consultation_fee' => 130.00,
-                    'schedule' => json_encode([
-                        'monday' => '07:00-15:00',
-                        'tuesday' => '07:00-15:00',
-                        'wednesday' => '07:00-15:00',
-                        'thursday' => '07:00-15:00',
-                        'friday' => '07:00-13:00',
-                        'saturday' => 'emergency',
-                        'sunday' => 'emergency'
-                    ]),
-                    'bio' => 'Traumatólogo con amplia experiencia en cirugía ortopédica, traumatología deportiva y reconstrucción ósea.'
+                    'status' => 'active',
+                    'bio' => 'Traumatólogo con amplia experiencia en cirugía ortopédica, traumatología deportiva y reconstrucción ósea.',
+                    'rating' => 4.9
+                ],
+                'clinic_id' => 2,
+                'schedule' => [
+                    'monday' => '07:00-15:00',
+                    'tuesday' => '07:00-15:00',
+                    'wednesday' => '07:00-15:00',
+                    'thursday' => '07:00-15:00',
+                    'friday' => '07:00-13:00',
+                    'saturday' => 'emergency',
+                    'sunday' => 'emergency'
                 ]
             ],
             [
@@ -229,23 +321,36 @@ class DoctorUserSeeder extends Seeder
                     'email_verified_at' => now(),
                 ],
                 'doctor' => [
+                    'name' => 'Dra. Isabel Ramírez',
                     'specialty' => 'Oftalmología',
                     'license_number' => 'MD-OFT-008',
-                    'clinic_id' => 3,
+                    'email' => 'isabel.ramirez@clinica.com',
                     'phone' => '555-1008',
-                    'education' => 'MD Universidad CES, Especialización en Oftalmología',
+                    'emergency_phone' => '555-9008',
+                    'address' => 'Calle 127 #7-45, Bogotá, Colombia',
+                    'education' => [
+                        'MD Universidad CES - Medicina General',
+                        'Especialización en Oftalmología - Instituto de Oftalmología'
+                    ],
+                    'certifications' => [
+                        'Certificado en Cirugía de Cataratas',
+                        'Certificado en Cirugía de Retina'
+                    ],
+                    'languages' => ['Español', 'Inglés'],
                     'experience_years' => 14,
-                    'consultation_fee' => 115.00,
-                    'schedule' => json_encode([
-                        'monday' => '08:00-17:00',
-                        'tuesday' => '08:00-17:00',
-                        'wednesday' => '08:00-17:00',
-                        'thursday' => '08:00-17:00',
-                        'friday' => '08:00-16:00',
-                        'saturday' => 'off',
-                        'sunday' => 'off'
-                    ]),
-                    'bio' => 'Oftalmóloga especializada en cirugía de cataratas, retina y enfermedades oculares complejas.'
+                    'status' => 'active',
+                    'bio' => 'Oftalmóloga especializada en cirugía de cataratas, retina y enfermedades oculares complejas.',
+                    'rating' => 4.7
+                ],
+                'clinic_id' => 3,
+                'schedule' => [
+                    'monday' => '08:00-17:00',
+                    'tuesday' => '08:00-17:00',
+                    'wednesday' => '08:00-17:00',
+                    'thursday' => '08:00-17:00',
+                    'friday' => '08:00-16:00',
+                    'saturday' => 'off',
+                    'sunday' => 'off'
                 ]
             ],
             [
@@ -258,23 +363,36 @@ class DoctorUserSeeder extends Seeder
                     'email_verified_at' => now(),
                 ],
                 'doctor' => [
+                    'name' => 'Dr. Andrés López',
                     'specialty' => 'Medicina Interna',
                     'license_number' => 'MD-INT-009',
-                    'clinic_id' => 1,
+                    'email' => 'andres.lopez@clinica.com',
                     'phone' => '555-1009',
-                    'education' => 'MD Universidad de Antioquia, Especialización en Medicina Interna',
+                    'emergency_phone' => '555-9009',
+                    'address' => 'Carrera 7 #32-16, Bogotá, Colombia',
+                    'education' => [
+                        'MD Universidad de Antioquia - Medicina General',
+                        'Especialización en Medicina Interna - Hospital San Vicente'
+                    ],
+                    'certifications' => [
+                        'Certificado en Medicina Interna',
+                        'Certificado en Cuidados Intensivos'
+                    ],
+                    'languages' => ['Español', 'Inglés'],
                     'experience_years' => 16,
-                    'consultation_fee' => 105.00,
-                    'schedule' => json_encode([
-                        'monday' => '07:00-16:00',
-                        'tuesday' => '07:00-16:00',
-                        'wednesday' => '07:00-16:00',
-                        'thursday' => '07:00-16:00',
-                        'friday' => '07:00-15:00',
-                        'saturday' => 'off',
-                        'sunday' => 'off'
-                    ]),
-                    'bio' => 'Internista con experiencia en diagnóstico y tratamiento de enfermedades complejas en adultos.'
+                    'status' => 'active',
+                    'bio' => 'Internista con experiencia en diagnóstico y tratamiento de enfermedades complejas en adultos.',
+                    'rating' => 4.6
+                ],
+                'clinic_id' => 1,
+                'schedule' => [
+                    'monday' => '07:00-16:00',
+                    'tuesday' => '07:00-16:00',
+                    'wednesday' => '07:00-16:00',
+                    'thursday' => '07:00-16:00',
+                    'friday' => '07:00-15:00',
+                    'saturday' => 'off',
+                    'sunday' => 'off'
                 ]
             ],
             [
@@ -287,23 +405,36 @@ class DoctorUserSeeder extends Seeder
                     'email_verified_at' => now(),
                 ],
                 'doctor' => [
+                    'name' => 'Dra. Carmen Vargas',
                     'specialty' => 'Psiquiatría',
                     'license_number' => 'MD-PSI-010',
-                    'clinic_id' => 3,
+                    'email' => 'carmen.vargas@clinica.com',
                     'phone' => '555-1010',
-                    'education' => 'MD Universidad de los Andes, Especialización en Psiquiatría',
+                    'emergency_phone' => '555-9010',
+                    'address' => 'Calle 100 #9-85, Bogotá, Colombia',
+                    'education' => [
+                        'MD Universidad de los Andes - Medicina General',
+                        'Especialización en Psiquiatría - Hospital San Juan de Dios'
+                    ],
+                    'certifications' => [
+                        'Certificado en Psiquiatría General',
+                        'Certificado en Terapia Cognitivo-Conductual'
+                    ],
+                    'languages' => ['Español', 'Inglés'],
                     'experience_years' => 11,
-                    'consultation_fee' => 125.00,
-                    'schedule' => json_encode([
-                        'monday' => '09:00-18:00',
-                        'tuesday' => '09:00-18:00',
-                        'wednesday' => '09:00-18:00',
-                        'thursday' => '09:00-18:00',
-                        'friday' => '09:00-17:00',
-                        'saturday' => 'off',
-                        'sunday' => 'off'
-                    ]),
-                    'bio' => 'Psiquiatra especializada en trastornos del estado de ánimo, ansiedad y salud mental integral.'
+                    'status' => 'active',
+                    'bio' => 'Psiquiatra especializada en trastornos del estado de ánimo, ansiedad y salud mental integral.',
+                    'rating' => 4.8
+                ],
+                'clinic_id' => 3,
+                'schedule' => [
+                    'monday' => '09:00-18:00',
+                    'tuesday' => '09:00-18:00',
+                    'wednesday' => '09:00-18:00',
+                    'thursday' => '09:00-18:00',
+                    'friday' => '09:00-17:00',
+                    'saturday' => 'off',
+                    'sunday' => 'off'
                 ]
             ]
         ];
@@ -322,9 +453,19 @@ class DoctorUserSeeder extends Seeder
             
             // Crear perfil de doctor asociado al usuario
             $doctorData['doctor']['user_id'] = $user->id;
-            Doctor::create($doctorData['doctor']);
+            $doctor = Doctor::create($doctorData['doctor']);
             
-            $this->command->info("✅ Doctor creado: {$doctorData['user']['name']}");
+            // Crear la relación doctor-clínica en la tabla pivot
+            $clinic = Clinic::find($doctorData['clinic_id']);
+            if ($clinic) {
+                $doctor->clinics()->attach($clinic->id, [
+                    'status' => 'active',
+                    'schedule' => json_encode($doctorData['schedule'])
+                ]);
+                $this->command->info("✅ Doctor creado: {$doctorData['user']['name']} - Asignado a {$clinic->name}");
+            } else {
+                $this->command->info("✅ Doctor creado: {$doctorData['user']['name']} - Sin clínica asignada");
+            }
         }
 
         $this->command->info('✅ Proceso de creación de doctores completado!');
