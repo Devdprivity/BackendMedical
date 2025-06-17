@@ -309,14 +309,24 @@ class DoctorUserSeeder extends Seeder
         ];
 
         foreach ($doctors as $doctorData) {
+            // Verificar si el usuario ya existe
+            $existingUser = User::where('email', $doctorData['user']['email'])->first();
+            
+            if ($existingUser) {
+                $this->command->info("⚠️  Usuario {$doctorData['user']['email']} ya existe, saltando...");
+                continue;
+            }
+            
             // Crear usuario
             $user = User::create($doctorData['user']);
             
             // Crear perfil de doctor asociado al usuario
             $doctorData['doctor']['user_id'] = $user->id;
             Doctor::create($doctorData['doctor']);
+            
+            $this->command->info("✅ Doctor creado: {$doctorData['user']['name']}");
         }
 
-        $this->command->info('✅ Doctores y usuarios creados exitosamente!');
+        $this->command->info('✅ Proceso de creación de doctores completado!');
     }
 } 
