@@ -19,10 +19,15 @@ class ClinicSeeder extends Seeder
                 'address' => 'Av. Principal 123, Centro Médico',
                 'phone' => '555-0100',
                 'email' => 'info@clinicacentral.com',
-                'website' => 'https://clinicacentral.com',
-                'status' => 'active',
-                'specialties' => json_encode(['Medicina General', 'Cardiología', 'Pediatría', 'Ginecología']),
-                'opening_hours' => json_encode([
+                'medical_director' => 'Dr. Carlos Mendoza',
+                'foundation_year' => 1985,
+                'specialties' => json_encode([
+                    'Medicina General',
+                    'Cardiología',
+                    'Pediatría',
+                    'Ginecología'
+                ]),
+                'schedule' => json_encode([
                     'monday' => '07:00-18:00',
                     'tuesday' => '07:00-18:00',
                     'wednesday' => '07:00-18:00',
@@ -31,38 +36,51 @@ class ClinicSeeder extends Seeder
                     'saturday' => '08:00-12:00',
                     'sunday' => 'closed'
                 ]),
-                'emergency_contact' => '555-0199',
-                'license_number' => 'CL-2024-001'
+                'emergency_services' => true,
+                'status' => 'active',
+                'description' => 'Clínica especializada en medicina general y especialidades médicas con más de 35 años de experiencia.'
             ],
             [
                 'name' => 'Hospital San Rafael',
-                'address' => 'Calle 45 #12-34, Zona Norte',
+                'address' => 'Calle Salud 456, Sector Norte',
                 'phone' => '555-0200',
                 'email' => 'contacto@sanrafael.com',
-                'website' => 'https://hospitalsanrafael.com',
-                'status' => 'active',
-                'specialties' => json_encode(['Cirugía', 'Traumatología', 'Neurología', 'Oncología', 'UCI']),
-                'opening_hours' => json_encode([
-                    'monday' => '24/7',
-                    'tuesday' => '24/7',
-                    'wednesday' => '24/7',
-                    'thursday' => '24/7',
-                    'friday' => '24/7',
-                    'saturday' => '24/7',
-                    'sunday' => '24/7'
+                'medical_director' => 'Dra. María González',
+                'foundation_year' => 1992,
+                'specialties' => json_encode([
+                    'Cirugía General',
+                    'Traumatología',
+                    'Neurología',
+                    'Oncología',
+                    'Medicina Interna'
                 ]),
-                'emergency_contact' => '555-0299',
-                'license_number' => 'CL-2024-002'
+                'schedule' => json_encode([
+                    'monday' => '24 hours',
+                    'tuesday' => '24 hours',
+                    'wednesday' => '24 hours',
+                    'thursday' => '24 hours',
+                    'friday' => '24 hours',
+                    'saturday' => '24 hours',
+                    'sunday' => '24 hours'
+                ]),
+                'emergency_services' => true,
+                'status' => 'active',
+                'description' => 'Hospital de alta complejidad con servicios de emergencia 24/7 y especialidades quirúrgicas.'
             ],
             [
-                'name' => 'Centro Médico Esperanza',
-                'address' => 'Carrera 78 #90-12, Zona Sur',
+                'name' => 'Centro Médico Familiar',
+                'address' => 'Plaza Comercial 789, Zona Residencial',
                 'phone' => '555-0300',
-                'email' => 'info@esperanza.com',
-                'website' => 'https://centroesperanza.com',
-                'status' => 'active',
-                'specialties' => json_encode(['Dermatología', 'Oftalmología', 'Psicología', 'Fisioterapia']),
-                'opening_hours' => json_encode([
+                'email' => 'atencion@centrofamiliar.com',
+                'medical_director' => 'Dr. Roberto Silva',
+                'foundation_year' => 2005,
+                'specialties' => json_encode([
+                    'Medicina Familiar',
+                    'Pediatría',
+                    'Dermatología',
+                    'Oftalmología'
+                ]),
+                'schedule' => json_encode([
                     'monday' => '08:00-17:00',
                     'tuesday' => '08:00-17:00',
                     'wednesday' => '08:00-17:00',
@@ -71,48 +89,62 @@ class ClinicSeeder extends Seeder
                     'saturday' => '09:00-13:00',
                     'sunday' => 'closed'
                 ]),
-                'emergency_contact' => '555-0399',
-                'license_number' => 'CL-2024-003'
+                'emergency_services' => false,
+                'status' => 'active',
+                'description' => 'Centro médico enfocado en la atención familiar integral con ambiente cálido y profesional.'
             ],
             [
-                'name' => 'Clínica Pediátrica Los Ángeles',
-                'address' => 'Av. Los Niños 567, Zona Residencial',
+                'name' => 'Clínica Especializada del Corazón',
+                'address' => 'Av. Cardiólogos 321, Torre Médica',
                 'phone' => '555-0400',
-                'email' => 'pediatria@losangeles.com',
-                'website' => 'https://pediatrialosangeles.com',
-                'status' => 'active',
-                'specialties' => json_encode(['Pediatría', 'Neonatología', 'Psicología Infantil', 'Vacunación']),
-                'opening_hours' => json_encode([
-                    'monday' => '07:00-16:00',
-                    'tuesday' => '07:00-16:00',
-                    'wednesday' => '07:00-16:00',
-                    'thursday' => '07:00-16:00',
-                    'friday' => '07:00-16:00',
-                    'saturday' => '08:00-12:00',
-                    'sunday' => 'closed'
+                'email' => 'info@clinicacorazon.com',
+                'medical_director' => 'Dr. Fernando Herrera',
+                'foundation_year' => 2010,
+                'specialties' => json_encode([
+                    'Cardiología',
+                    'Cirugía Cardiovascular',
+                    'Electrofisiología',
+                    'Hemodinamia'
                 ]),
-                'emergency_contact' => '555-0499',
-                'license_number' => 'CL-2024-004'
+                'schedule' => json_encode([
+                    'monday' => '07:00-19:00',
+                    'tuesday' => '07:00-19:00',
+                    'wednesday' => '07:00-19:00',
+                    'thursday' => '07:00-19:00',
+                    'friday' => '07:00-19:00',
+                    'saturday' => '08:00-14:00',
+                    'sunday' => 'emergency only'
+                ]),
+                'emergency_services' => true,
+                'status' => 'active',
+                'description' => 'Clínica especializada en enfermedades cardiovasculares con tecnología de vanguardia.'
             ],
             [
-                'name' => 'Instituto Cardiovascular',
-                'address' => 'Calle del Corazón 234, Centro Especializado',
+                'name' => 'Instituto Materno Infantil',
+                'address' => 'Calle Maternidad 654, Sector Sur',
                 'phone' => '555-0500',
-                'email' => 'cardiologia@instituto.com',
-                'website' => 'https://cardiovascular.com',
-                'status' => 'active',
-                'specialties' => json_encode(['Cardiología', 'Cirugía Cardiovascular', 'Electrofisiología', 'Hemodinamia']),
-                'opening_hours' => json_encode([
-                    'monday' => '06:00-18:00',
-                    'tuesday' => '06:00-18:00',
-                    'wednesday' => '06:00-18:00',
-                    'thursday' => '06:00-18:00',
-                    'friday' => '06:00-18:00',
-                    'saturday' => '07:00-12:00',
-                    'sunday' => 'emergency'
+                'email' => 'contacto@maternoinfantil.com',
+                'medical_director' => 'Dra. Ana Patricia López',
+                'foundation_year' => 1998,
+                'specialties' => json_encode([
+                    'Ginecología',
+                    'Obstetricia',
+                    'Pediatría',
+                    'Neonatología',
+                    'Medicina Materno-Fetal'
                 ]),
-                'emergency_contact' => '555-0599',
-                'license_number' => 'CL-2024-005'
+                'schedule' => json_encode([
+                    'monday' => '06:00-20:00',
+                    'tuesday' => '06:00-20:00',
+                    'wednesday' => '06:00-20:00',
+                    'thursday' => '06:00-20:00',
+                    'friday' => '06:00-20:00',
+                    'saturday' => '07:00-15:00',
+                    'sunday' => '08:00-14:00'
+                ]),
+                'emergency_services' => true,
+                'status' => 'active',
+                'description' => 'Instituto especializado en salud materno-infantil con sala de partos y UCI neonatal.'
             ]
         ];
 
@@ -121,5 +153,6 @@ class ClinicSeeder extends Seeder
         }
 
         $this->command->info('✅ Clínicas creadas exitosamente!');
+        $this->command->info('📊 Total: ' . count($clinics) . ' clínicas');
     }
 } 
