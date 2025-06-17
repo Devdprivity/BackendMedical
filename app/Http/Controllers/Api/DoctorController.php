@@ -22,7 +22,16 @@ class DoctorController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            // Simple test first - just return a basic response to verify controller works
+            // Very simple test - just return a basic response without any database queries
+            return response()->json([
+                'success' => true,
+                'message' => 'Doctors endpoint is working! 🎉',
+                'data' => [],
+                'test' => 'This is a test response to verify the controller works'
+            ]);
+
+            // Original code commented out for testing
+            /*
             $query = Doctor::with(['user', 'clinics']);
 
             // Filter by clinic if provided
@@ -68,6 +77,7 @@ class DoctorController extends Controller
                     'last_page' => $doctors->lastPage(),
                 ]
             ]);
+            */
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
