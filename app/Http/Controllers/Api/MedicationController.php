@@ -14,65 +14,49 @@ class MedicationController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
-        try {
-            $query = Medication::query();
+        $query = Medication::query();
 
-            // Filter by category
-            if ($request->has('category')) {
-                $query->where('category', 'like', '%' . $request->category . '%');
-            }
-
-            // Filter by manufacturer
-            if ($request->has('manufacturer')) {
-                $query->where('manufacturer', 'like', '%' . $request->manufacturer . '%');
-            }
-
-            // Search by name or active ingredient
-            if ($request->has('search')) {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', '%' . $search . '%')
-                      ->orWhere('active_ingredient', 'like', '%' . $search . '%')
-                      ->orWhere('barcode', 'like', '%' . $search . '%');
-                });
-            }
-
-            // Filter by stock status
-            if ($request->has('stock_status')) {
-                switch ($request->stock_status) {
-                    case 'low':
-                        $query->whereColumn('current_stock', '<=', 'minimum_stock');
-                        break;
-                    case 'out':
-                        $query->where('current_stock', 0);
-                        break;
-                    case 'available':
-                        $query->where('current_stock', '>', 0);
-                        break;
-                }
-            }
-
-            $medications = $query->orderBy('name')
-                ->paginate($request->get('per_page', 15));
-
-            return response()->json([
-                'success' => true,
-                'data' => $medications->items(),
-                'pagination' => [
-                    'current_page' => $medications->currentPage(),
-                    'per_page' => $medications->perPage(),
-                    'total' => $medications->total(),
-                    'last_page' => $medications->lastPage(),
-                ]
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetching medications: ' . $e->getMessage()
-            ], 500);
+        // Filter by category
+        if ($request->has('category')) {
+            $query->where('category', 'like', '%' . $request->category . '%');
         }
+
+        // Filter by manufacturer
+        if ($request->has('manufacturer')) {
+            $query->where('manufacturer', 'like', '%' . $request->manufacturer . '%');
+        }
+
+        // Search by name or active ingredient
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('active_ingredient', 'like', '%' . $search . '%')
+                  ->orWhere('barcode', 'like', '%' . $search . '%');
+            });
+        }
+
+        // Filter by stock status
+        if ($request->has('stock_status')) {
+            switch ($request->stock_status) {
+                case 'low':
+                    $query->whereColumn('current_stock', '<=', 'minimum_stock');
+                    break;
+                case 'out':
+                    $query->where('current_stock', 0);
+                    break;
+                case 'available':
+                    $query->where('current_stock', '>', 0);
+                    break;
+            }
+        }
+
+        $medications = $query->orderBy('name')
+            ->paginate($request->get('per_page', 15));
+
+        return response()->json($medications);
     }
 
     /**

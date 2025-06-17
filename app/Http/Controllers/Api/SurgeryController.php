@@ -16,64 +16,49 @@ class SurgeryController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
-        try {
-            $query = Surgery::with(['patient.user', 'mainSurgeon.user', 'clinic']);
+        $query = Surgery::with(['patient', 'mainSurgeon', 'clinic']);
 
-            // Filter by status
-            if ($request->has('status')) {
-                $query->where('status', $request->status);
-            }
-
-            // Filter by date range
-            if ($request->has('start_date')) {
-                $query->whereDate('surgery_date', '>=', $request->start_date);
-            }
-            if ($request->has('end_date')) {
-                $query->whereDate('surgery_date', '<=', $request->end_date);
-            }
-
-            // Filter by surgeon
-            if ($request->has('surgeon_id')) {
-                $query->where('main_surgeon_id', $request->surgeon_id);
-            }
-
-            // Filter by clinic
-            if ($request->has('clinic_id')) {
-                $query->where('clinic_id', $request->clinic_id);
-            }
-
-            // Search by patient name or surgery type
-            if ($request->has('search')) {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
-                    $q->where('surgery_type', 'like', '%' . $search . '%')
-                      ->orWhereHas('patient', function ($patientQuery) use ($search) {
-                          $patientQuery->where('name', 'like', '%' . $search . '%');
-                      });
-                });
-            }
-
-            $surgeries = $query->orderBy('surgery_date', 'desc')
-                ->paginate($request->get('per_page', 15));
-
-            return response()->json([
-                'success' => true,
-                'data' => $surgeries->items(),
-                'pagination' => [
-                    'current_page' => $surgeries->currentPage(),
-                    'per_page' => $surgeries->perPage(),
-                    'total' => $surgeries->total(),
-                    'last_page' => $surgeries->lastPage(),
-                ]
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetching surgeries: ' . $e->getMessage()
-            ], 500);
+        // Filter by status
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
         }
+
+        // Filter by date range
+        if ($request->has('from_date')) {
+            $query->whereDate('surgery_date', '>=', $request->from_date);
+        }
+
+        if ($request->has('to_date')) {
+            $query->whereDate('surgery_date', '<=', $request->to_date);
+        }
+
+        // Filter by surgeon
+        if ($request->has('surgeon_id')) {
+            $query->where('main_surgeon_id', $request->surgeon_id);
+        }
+
+        // Filter by clinic
+        if ($request->has('clinic_id')) {
+            $query->where('clinic_id', $request->clinic_id);
+        }
+
+        // Search by patient name or surgery type
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('surgery_type', 'like', '%' . $search . '%')
+                  ->orWhereHas('patient', function ($patientQuery) use ($search) {
+                      $patientQuery->where('name', 'like', '%' . $search . '%');
+                  });
+            });
+        }
+
+        $surgeries = $query->orderBy('surgery_date', 'desc')
+            ->paginate($request->get('per_page', 15));
+
+        return response()->json($surgeries);
     }
 
     /**

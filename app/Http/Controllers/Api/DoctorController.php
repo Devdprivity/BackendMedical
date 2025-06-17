@@ -22,28 +22,27 @@ class DoctorController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        try {
-            Log::info('DoctorController@index called');
-            
-            // Simple test response first
-            return response()->json([
-                'success' => true,
-                'message' => 'Doctor endpoint working',
-                'data' => [],
-                'debug' => [
-                    'user' => auth()->user() ? auth()->user()->toArray() : 'No user',
-                    'guard' => auth()->getDefaultDriver(),
-                ]
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('DoctorController@index error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Error in doctor controller: ' . $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ], 500);
+        $query = Doctor::query();
+
+        // Filter by specialty
+        if ($request->has('specialty')) {
+            $query->where('specialty', 'like', '%' . $request->specialty . '%');
         }
+
+        // Search by name
+        if ($request->has('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        // Filter by status
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $doctors = $query->with(['user', 'clinics'])
+            ->paginate($request->get('per_page', 15));
+
+        return response()->json($doctors);
     }
 
     /**
@@ -51,211 +50,128 @@ class DoctorController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'message' => 'Store method working',
-            'data' => null
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'specialty' => 'required|string|max:100',
+            'license_number' => 'required|string|max:50|unique:doctors',
+            'email' => 'required|email|unique:doctors',
+            'phone' => 'required|string|max:20',
+            'address' => 'required|string',
+            'experience_years' => 'required|integer|min:0',
+            'status' => 'in:active,inactive,vacation,leave',
         ]);
+
+        $doctor = Doctor::create($request->all());
+
+        return response()->json($doctor, 201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(string $id): JsonResponse
+    public function show(Doctor $doctor): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'message' => 'Show method working',
-            'data' => ['id' => $id]
-        ]);
+        $doctor->load(['user', 'clinics']);
+
+        return response()->json($doctor);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id): JsonResponse
+    public function update(Request $request, Doctor $doctor): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'message' => 'Update method working',
-            'data' => ['id' => $id]
+        $request->validate([
+            'name' => 'string|max:255',
+            'specialty' => 'string|max:100',
+            'license_number' => 'string|max:50|unique:doctors,license_number,' . $doctor->id,
+            'email' => 'email|unique:doctors,email,' . $doctor->id,
+            'phone' => 'string|max:20',
+            'address' => 'string',
+            'experience_years' => 'integer|min:0',
+            'status' => 'in:active,inactive,vacation,leave',
         ]);
+
+        $doctor->update($request->all());
+
+        return response()->json($doctor);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id): JsonResponse
+    public function destroy(Doctor $doctor): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'message' => 'Destroy method working',
-            'data' => ['id' => $id]
-        ]);
+        $doctor->delete();
+
+        return response()->json(['message' => 'Doctor deleted successfully']);
     }
 
     /**
-     * Get doctor's appointments
+     * Get appointments for a specific doctor.
      */
-    public function appointments(Request $request, string $id): JsonResponse
+    public function appointments(Doctor $doctor, Request $request): JsonResponse
     {
-        try {
-            $doctor = Doctor::findOrFail($id);
+        $query = $doctor->appointments()
+            ->with(['patient', 'clinic']);
 
-            $query = Appointment::with(['patient.user'])
-                ->where('doctor_id', $id);
-
-            // Filter by date range
-            if ($request->has('start_date')) {
-                $query->whereDate('date_time', '>=', $request->start_date);
-            }
-            if ($request->has('end_date')) {
-                $query->whereDate('date_time', '<=', $request->end_date);
-            }
-
-            // Filter by status
-            if ($request->has('status')) {
-                $query->where('status', $request->status);
-            }
-
-            $appointments = $query->orderBy('date_time', 'desc')
-                ->paginate($request->get('per_page', 15));
-
-            return response()->json([
-                'success' => true,
-                'data' => $appointments->items(),
-                'pagination' => [
-                    'current_page' => $appointments->currentPage(),
-                    'per_page' => $appointments->perPage(),
-                    'total' => $appointments->total(),
-                    'last_page' => $appointments->lastPage(),
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Doctor not found'
-            ], 404);
+        // Filter by date range
+        if ($request->has('from_date')) {
+            $query->whereDate('date_time', '>=', $request->from_date);
         }
+
+        if ($request->has('to_date')) {
+            $query->whereDate('date_time', '<=', $request->to_date);
+        }
+
+        // Filter by status
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $appointments = $query->orderBy('date_time', 'desc')
+            ->paginate(15);
+
+        return response()->json($appointments);
     }
 
     /**
-     * Get doctor's today appointments
+     * Get today's appointments for a specific doctor.
      */
-    public function todayAppointments(string $id): JsonResponse
+    public function todayAppointments(Doctor $doctor): JsonResponse
     {
-        try {
-            $doctor = Doctor::findOrFail($id);
+        $appointments = $doctor->appointments()
+            ->with(['patient', 'clinic'])
+            ->whereDate('date_time', today())
+            ->orderBy('date_time')
+            ->get();
 
-            $appointments = Appointment::with(['patient.user'])
-                ->where('doctor_id', $id)
-                ->whereDate('date_time', today())
-                ->orderBy('date_time')
-                ->get();
-
-            return response()->json([
-                'success' => true,
-                'data' => $appointments
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Doctor not found'
-            ], 404);
-        }
+        return response()->json($appointments);
     }
 
     /**
-     * Get doctor's surgeries
+     * Get surgeries for a specific doctor.
      */
-    public function surgeries(Request $request, string $id): JsonResponse
+    public function surgeries(Doctor $doctor): JsonResponse
     {
-        try {
-            $doctor = Doctor::findOrFail($id);
+        $surgeries = $doctor->surgeries()
+            ->with(['patient', 'clinic'])
+            ->orderBy('surgery_date', 'desc')
+            ->paginate(15);
 
-            $query = Surgery::with(['patient.user'])
-                ->where('main_surgeon_id', $id);
-
-            // Filter by date range
-            if ($request->has('start_date')) {
-                $query->whereDate('surgery_date', '>=', $request->start_date);
-            }
-            if ($request->has('end_date')) {
-                $query->whereDate('surgery_date', '<=', $request->end_date);
-            }
-
-            // Filter by status
-            if ($request->has('status')) {
-                $query->where('status', $request->status);
-            }
-
-            $surgeries = $query->orderBy('surgery_date', 'desc')
-                ->paginate($request->get('per_page', 15));
-
-            return response()->json([
-                'success' => true,
-                'data' => $surgeries->items(),
-                'pagination' => [
-                    'current_page' => $surgeries->currentPage(),
-                    'per_page' => $surgeries->perPage(),
-                    'total' => $surgeries->total(),
-                    'last_page' => $surgeries->lastPage(),
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Doctor not found'
-            ], 404);
-        }
+        return response()->json($surgeries);
     }
 
     /**
-     * Get medical exams requested by this doctor
+     * Get requested exams for a specific doctor.
      */
-    public function requestedExams(Request $request, string $id): JsonResponse
+    public function requestedExams(Doctor $doctor): JsonResponse
     {
-        try {
-            $doctor = Doctor::findOrFail($id);
+        $exams = $doctor->requestedExams()
+            ->with(['patient', 'clinic'])
+            ->orderBy('exam_date', 'desc')
+            ->paginate(15);
 
-            $query = MedicalExam::with(['patient.user'])
-                ->where('requesting_doctor_id', $id);
-
-            // Filter by date range
-            if ($request->has('start_date')) {
-                $query->whereDate('exam_date', '>=', $request->start_date);
-            }
-            if ($request->has('end_date')) {
-                $query->whereDate('exam_date', '<=', $request->end_date);
-            }
-
-            // Filter by status
-            if ($request->has('status')) {
-                $query->where('status', $request->status);
-            }
-
-            $exams = $query->orderBy('exam_date', 'desc')
-                ->paginate($request->get('per_page', 15));
-
-            return response()->json([
-                'success' => true,
-                'data' => $exams->items(),
-                'pagination' => [
-                    'current_page' => $exams->currentPage(),
-                    'per_page' => $exams->perPage(),
-                    'total' => $exams->total(),
-                    'last_page' => $exams->lastPage(),
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Doctor not found'
-            ], 404);
-        }
+        return response()->json($exams);
     }
 }

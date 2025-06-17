@@ -12,26 +12,45 @@ class AppointmentController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
-        try {
-            return response()->json([
-                'success' => true,
-                'message' => 'Appointment endpoint working',
-                'data' => [],
-                'debug' => [
-                    'user' => auth()->user() ? auth()->user()->toArray() : 'No user',
-                    'guard' => auth()->getDefaultDriver(),
-                ]
-            ]);
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error in appointment controller: ' . $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ], 500);
+        $query = Appointment::with(['patient', 'doctor', 'clinic']);
+
+        // Filter by status
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
         }
+
+        // Filter by date range
+        if ($request->has('from_date')) {
+            $query->whereDate('date_time', '>=', $request->from_date);
+        }
+
+        if ($request->has('to_date')) {
+            $query->whereDate('date_time', '<=', $request->to_date);
+        }
+
+        // Filter by doctor
+        if ($request->has('doctor_id')) {
+            $query->where('doctor_id', $request->doctor_id);
+        }
+
+        // Filter by clinic
+        if ($request->has('clinic_id')) {
+            $query->where('clinic_id', $request->clinic_id);
+        }
+
+        // Search by patient name
+        if ($request->has('search')) {
+            $query->whereHas('patient', function($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        $appointments = $query->orderBy('date_time', 'desc')
+            ->paginate($request->get('per_page', 15));
+
+        return response()->json($appointments);
     }
 
     /**

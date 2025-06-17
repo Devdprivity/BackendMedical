@@ -15,26 +15,33 @@ class PatientController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
-        try {
-            return response()->json([
-                'success' => true,
-                'message' => 'Patient endpoint working',
-                'data' => [],
-                'debug' => [
-                    'user' => auth()->user() ? auth()->user()->toArray() : 'No user',
-                    'guard' => auth()->getDefaultDriver(),
-                ]
-            ]);
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error in patient controller: ' . $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ], 500);
+        $query = Patient::query();
+
+        // Filter by status
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
         }
+
+        // Search by name or DNI
+        if ($request->has('search')) {
+            $query->where(function($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->search . '%')
+                  ->orWhere('dni', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        // Filter by clinic
+        if ($request->has('clinic_id')) {
+            $query->where('preferred_clinic_id', $request->clinic_id);
+        }
+
+        $patients = $query->with(['preferredClinic', 'emergencyContact'])
+            ->withCount('appointments')
+            ->paginate($request->get('per_page', 15));
+
+        return response()->json($patients);
     }
 
     /**

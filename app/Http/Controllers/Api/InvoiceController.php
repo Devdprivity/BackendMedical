@@ -13,59 +13,43 @@ class InvoiceController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
-        try {
-            $query = Invoice::with(['patient.user', 'clinic']);
+        $query = Invoice::with(['patient', 'clinic']);
 
-            // Filter by payment status
-            if ($request->has('payment_status')) {
-                $query->where('payment_status', $request->payment_status);
-            }
-
-            // Filter by date range
-            if ($request->has('start_date')) {
-                $query->whereDate('invoice_date', '>=', $request->start_date);
-            }
-            if ($request->has('end_date')) {
-                $query->whereDate('invoice_date', '<=', $request->end_date);
-            }
-
-            // Filter by clinic
-            if ($request->has('clinic_id')) {
-                $query->where('clinic_id', $request->clinic_id);
-            }
-
-            // Search by patient name or invoice number
-            if ($request->has('search')) {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
-                    $q->where('invoice_number', 'like', '%' . $search . '%')
-                      ->orWhereHas('patient', function ($patientQuery) use ($search) {
-                          $patientQuery->where('name', 'like', '%' . $search . '%');
-                      });
-                });
-            }
-
-            $invoices = $query->orderBy('invoice_date', 'desc')
-                ->paginate($request->get('per_page', 15));
-
-            return response()->json([
-                'success' => true,
-                'data' => $invoices->items(),
-                'pagination' => [
-                    'current_page' => $invoices->currentPage(),
-                    'per_page' => $invoices->perPage(),
-                    'total' => $invoices->total(),
-                    'last_page' => $invoices->lastPage(),
-                ]
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetching invoices: ' . $e->getMessage()
-            ], 500);
+        // Filter by payment status
+        if ($request->has('payment_status')) {
+            $query->where('payment_status', $request->payment_status);
         }
+
+        // Filter by date range
+        if ($request->has('from_date')) {
+            $query->whereDate('invoice_date', '>=', $request->from_date);
+        }
+        if ($request->has('to_date')) {
+            $query->whereDate('invoice_date', '<=', $request->to_date);
+        }
+
+        // Filter by clinic
+        if ($request->has('clinic_id')) {
+            $query->where('clinic_id', $request->clinic_id);
+        }
+
+        // Search by patient name or invoice number
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('invoice_number', 'like', '%' . $search . '%')
+                  ->orWhereHas('patient', function ($patientQuery) use ($search) {
+                      $patientQuery->where('name', 'like', '%' . $search . '%');
+                  });
+            });
+        }
+
+        $invoices = $query->orderBy('invoice_date', 'desc')
+            ->paginate($request->get('per_page', 15));
+
+        return response()->json($invoices);
     }
 
     /**
