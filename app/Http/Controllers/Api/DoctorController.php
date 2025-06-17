@@ -21,11 +21,13 @@ class DoctorController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Doctor::with(['user', 'clinic']);
+        $query = Doctor::with(['user', 'clinics']);
 
         // Filter by clinic if provided
         if ($request->has('clinic_id')) {
-            $query->where('clinic_id', $request->clinic_id);
+            $query->whereHas('clinics', function ($q) use ($request) {
+                $q->where('clinic_id', $request->clinic_id);
+            });
         }
 
         // Filter by specialty if provided
@@ -36,15 +38,19 @@ class DoctorController extends Controller
         // Search by name
         if ($request->has('search')) {
             $search = $request->search;
-            $query->whereHas('user', function ($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', '%' . $search . '%')
-                  ->orWhere('email', 'like', '%' . $search . '%');
+                  ->orWhere('email', 'like', '%' . $search . '%')
+                  ->orWhereHas('user', function ($userQuery) use ($search) {
+                      $userQuery->where('name', 'like', '%' . $search . '%')
+                               ->orWhere('email', 'like', '%' . $search . '%');
+                  });
             });
         }
 
-        // Filter by availability
-        if ($request->has('available')) {
-            $query->where('is_available', $request->boolean('available'));
+        // Filter by status
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
         }
 
         $doctors = $query->paginate($request->get('per_page', 15));
@@ -67,22 +73,27 @@ class DoctorController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
+            'user_name' => 'required|string|max:255',
+            'user_email' => 'required|string|email|max:255|unique:users,email',
+            'user_password' => 'required|string|min:8',
+            'user_phone' => 'required|string|max:20',
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
-            'phone' => 'required|string|max:20',
-            'clinic_id' => 'required|exists:clinics,id',
             'specialty' => 'required|string|max:100',
             'license_number' => 'required|string|max:50|unique:doctors',
-            'years_of_experience' => 'required|integer|min:0|max:80',
-            'education' => 'nullable|string',
-            'certifications' => 'nullable|string',
-            'biography' => 'nullable|string',
-            'consultation_fee' => 'required|numeric|min:0',
-            'emergency_fee' => 'required|numeric|min:0',
-            'follow_up_fee' => 'required|numeric|min:0',
-            'schedule' => 'nullable|json',
-            'is_available' => 'boolean',
+            'email' => 'required|string|email|max:255|unique:doctors',
+            'phone' => 'required|string|max:20',
+            'emergency_phone' => 'nullable|string|max:20',
+            'address' => 'required|string',
+            'experience_years' => 'required|integer|min:0|max:80',
+            'education' => 'required|array',
+            'certifications' => 'nullable|array',
+            'languages' => 'nullable|array',
+            'bio' => 'nullable|string',
+            'photo_url' => 'nullable|string|url',
+            'status' => 'nullable|in:active,inactive,vacation,leave',
+            'clinic_ids' => 'required|array',
+            'clinic_ids.*' => 'exists:clinics,id',
+            'schedules' => 'nullable|array',
         ]);
 
         if ($validator->fails()) {
@@ -96,31 +107,45 @@ class DoctorController extends Controller
         try {
             // Create user first
             $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'phone' => $request->phone,
+                'name' => $request->user_name,
+                'email' => $request->user_email,
+                'password' => Hash::make($request->user_password),
+                'phone' => $request->user_phone,
                 'role' => 'doctor',
             ]);
 
             // Create doctor
             $doctor = Doctor::create([
                 'user_id' => $user->id,
-                'clinic_id' => $request->clinic_id,
+                'name' => $request->name,
                 'specialty' => $request->specialty,
                 'license_number' => $request->license_number,
-                'years_of_experience' => $request->years_of_experience,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'emergency_phone' => $request->emergency_phone,
+                'address' => $request->address,
+                'experience_years' => $request->experience_years,
                 'education' => $request->education,
-                'certifications' => $request->certifications,
-                'biography' => $request->biography,
-                'consultation_fee' => $request->consultation_fee,
-                'emergency_fee' => $request->emergency_fee,
-                'follow_up_fee' => $request->follow_up_fee,
-                'schedule' => $request->schedule ? json_decode($request->schedule, true) : null,
-                'is_available' => $request->boolean('is_available', true),
+                'certifications' => $request->certifications ?? [],
+                'languages' => $request->languages ?? [],
+                'bio' => $request->bio,
+                'photo_url' => $request->photo_url,
+                'status' => $request->status ?? 'active',
             ]);
 
-            $doctor->load(['user', 'clinic']);
+            // Attach clinics
+            if ($request->has('clinic_ids')) {
+                $clinicData = [];
+                foreach ($request->clinic_ids as $index => $clinicId) {
+                    $clinicData[$clinicId] = [
+                        'status' => 'active',
+                        'schedule' => $request->schedules[$index] ?? null,
+                    ];
+                }
+                $doctor->clinics()->attach($clinicData);
+            }
+
+            $doctor->load(['user', 'clinics']);
 
             return response()->json([
                 'success' => true,
@@ -142,7 +167,7 @@ class DoctorController extends Controller
     public function show(string $id): JsonResponse
     {
         try {
-            $doctor = Doctor::with(['user', 'clinic'])->findOrFail($id);
+            $doctor = Doctor::with(['user', 'clinics'])->findOrFail($id);
 
             return response()->json([
                 'success' => true,
@@ -166,22 +191,27 @@ class DoctorController extends Controller
             $doctor = Doctor::findOrFail($id);
 
             $validator = Validator::make($request->all(), [
+                'user_name' => 'sometimes|string|max:255',
+                'user_email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($doctor->user_id)],
+                'user_password' => 'sometimes|string|min:8',
+                'user_phone' => 'sometimes|string|max:20',
                 'name' => 'sometimes|string|max:255',
-                'email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('users')->ignore($doctor->user_id)],
-                'password' => 'sometimes|string|min:8',
-                'phone' => 'sometimes|string|max:20',
-                'clinic_id' => 'sometimes|exists:clinics,id',
                 'specialty' => 'sometimes|string|max:100',
                 'license_number' => ['sometimes', 'string', 'max:50', Rule::unique('doctors')->ignore($id)],
-                'years_of_experience' => 'sometimes|integer|min:0|max:80',
-                'education' => 'nullable|string',
-                'certifications' => 'nullable|string',
-                'biography' => 'nullable|string',
-                'consultation_fee' => 'sometimes|numeric|min:0',
-                'emergency_fee' => 'sometimes|numeric|min:0',
-                'follow_up_fee' => 'sometimes|numeric|min:0',
-                'schedule' => 'nullable|json',
-                'is_available' => 'boolean',
+                'email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('doctors')->ignore($id)],
+                'phone' => 'sometimes|string|max:20',
+                'emergency_phone' => 'nullable|string|max:20',
+                'address' => 'sometimes|string',
+                'experience_years' => 'sometimes|integer|min:0|max:80',
+                'education' => 'sometimes|array',
+                'certifications' => 'nullable|array',
+                'languages' => 'nullable|array',
+                'bio' => 'nullable|string',
+                'photo_url' => 'nullable|string|url',
+                'status' => 'sometimes|in:active,inactive,vacation,leave',
+                'clinic_ids' => 'sometimes|array',
+                'clinic_ids.*' => 'exists:clinics,id',
+                'schedules' => 'nullable|array',
             ]);
 
             if ($validator->fails()) {
@@ -194,23 +224,32 @@ class DoctorController extends Controller
 
             // Update user data if provided
             $userData = [];
-            if ($request->has('name')) $userData['name'] = $request->name;
-            if ($request->has('email')) $userData['email'] = $request->email;
-            if ($request->has('phone')) $userData['phone'] = $request->phone;
-            if ($request->has('password')) $userData['password'] = Hash::make($request->password);
+            if ($request->has('user_name')) $userData['name'] = $request->user_name;
+            if ($request->has('user_email')) $userData['email'] = $request->user_email;
+            if ($request->has('user_phone')) $userData['phone'] = $request->user_phone;
+            if ($request->has('user_password')) $userData['password'] = Hash::make($request->user_password);
 
             if (!empty($userData)) {
                 $doctor->user->update($userData);
             }
 
             // Update doctor data
-            $doctorData = $request->except(['name', 'email', 'phone', 'password']);
-            if ($request->has('schedule')) {
-                $doctorData['schedule'] = json_decode($request->schedule, true);
+            $doctorData = $request->except(['user_name', 'user_email', 'user_phone', 'user_password', 'clinic_ids', 'schedules']);
+            $doctor->update($doctorData);
+
+            // Update clinic associations if provided
+            if ($request->has('clinic_ids')) {
+                $clinicData = [];
+                foreach ($request->clinic_ids as $index => $clinicId) {
+                    $clinicData[$clinicId] = [
+                        'status' => 'active',
+                        'schedule' => $request->schedules[$index] ?? null,
+                    ];
+                }
+                $doctor->clinics()->sync($clinicData);
             }
 
-            $doctor->update($doctorData);
-            $doctor->load(['user', 'clinic']);
+            $doctor->load(['user', 'clinics']);
 
             return response()->json([
                 'success' => true,
@@ -244,6 +283,7 @@ class DoctorController extends Controller
             }
 
             $user = $doctor->user;
+            $doctor->clinics()->detach(); // Remove clinic associations
             $doctor->delete();
             $user->delete();
 
@@ -268,15 +308,15 @@ class DoctorController extends Controller
         try {
             $doctor = Doctor::findOrFail($id);
 
-            $query = Appointment::with(['patient.user', 'clinic'])
+            $query = Appointment::with(['patient.user'])
                 ->where('doctor_id', $id);
 
             // Filter by date range
             if ($request->has('start_date')) {
-                $query->whereDate('appointment_date', '>=', $request->start_date);
+                $query->whereDate('date_time', '>=', $request->start_date);
             }
             if ($request->has('end_date')) {
-                $query->whereDate('appointment_date', '<=', $request->end_date);
+                $query->whereDate('date_time', '<=', $request->end_date);
             }
 
             // Filter by status
@@ -284,7 +324,7 @@ class DoctorController extends Controller
                 $query->where('status', $request->status);
             }
 
-            $appointments = $query->orderBy('appointment_date', 'desc')
+            $appointments = $query->orderBy('date_time', 'desc')
                 ->paginate($request->get('per_page', 15));
 
             return response()->json([
@@ -314,10 +354,10 @@ class DoctorController extends Controller
         try {
             $doctor = Doctor::findOrFail($id);
 
-            $appointments = Appointment::with(['patient.user', 'clinic'])
+            $appointments = Appointment::with(['patient.user'])
                 ->where('doctor_id', $id)
-                ->whereDate('appointment_date', today())
-                ->orderBy('appointment_time')
+                ->whereDate('date_time', today())
+                ->orderBy('date_time')
                 ->get();
 
             return response()->json([
@@ -341,8 +381,8 @@ class DoctorController extends Controller
         try {
             $doctor = Doctor::findOrFail($id);
 
-            $query = Surgery::with(['patient.user', 'clinic'])
-                ->where('doctor_id', $id);
+            $query = Surgery::with(['patient.user'])
+                ->where('main_surgeon_id', $id);
 
             // Filter by date range
             if ($request->has('start_date')) {
@@ -387,8 +427,8 @@ class DoctorController extends Controller
         try {
             $doctor = Doctor::findOrFail($id);
 
-            $query = MedicalExam::with(['patient.user', 'clinic'])
-                ->where('requested_by', $id);
+            $query = MedicalExam::with(['patient.user'])
+                ->where('requesting_doctor_id', $id);
 
             // Filter by date range
             if ($request->has('start_date')) {
