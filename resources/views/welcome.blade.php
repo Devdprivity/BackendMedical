@@ -827,7 +827,7 @@
                 <div class="content">
                     <div class="status-badge">
                         <div class="status-dot"></div>
-                        API Status: Online
+                        API Status: Online - Updated
                     </div>
                     
                     <h1 id="getting-started">Getting Started</h1>
