@@ -788,20 +788,6 @@
                     </a>
                     
                     <nav class="nav-items">
-                        <a href="#guide" class="nav-link">Guide</a>
-                        <a href="#reference" class="nav-link">Reference</a>
-                        @if (Route::has('login'))
-                            @auth
-                                <a href="{{ url('/dashboard') }}" class="nav-link">
-                                    <i class="fas fa-tachometer-alt"></i> Dashboard
-                                </a>
-                            @else
-                                <a href="{{ route('login') }}" class="nav-link">Login</a>
-                                @if (Route::has('register'))
-                                    <a href="{{ route('register') }}" class="nav-link primary">Get Started</a>
-                                @endif
-                            @endauth
-                        @endif
                         <button class="theme-toggle" onclick="toggleTheme()">
                             <i class="fas fa-moon"></i>
                         </button>
