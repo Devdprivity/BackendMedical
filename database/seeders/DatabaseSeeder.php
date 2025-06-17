@@ -13,7 +13,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Only create test users in non-production environments
+        // Solo crear test users en entornos locales/testing
         if (app()->environment(['local', 'testing'])) {
             // User::factory(10)->create();
 
@@ -23,8 +23,56 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        // Ejecutar seeders en orden de dependencias
         $this->call([
+            // 1. Crear usuarios admin y clínicas (base del sistema)
             AdminUserSeeder::class,
+            ClinicSeeder::class,
+            
+            // 2. Crear usuarios doctores y sus perfiles
+            DoctorUserSeeder::class,
+            
+            // 3. Crear pacientes con sus datos relacionados
+            PatientSeeder::class,
+            
+            // 4. Crear medicamentos (inventario)
+            MedicationSeeder::class,
+            
+            // 5. Crear citas médicas
+            AppointmentSeeder::class,
+            
+            // 6. Crear exámenes médicos con resultados
+            MedicalExamSeeder::class,
+            
+            // 7. Crear cirugías
+            SurgerySeeder::class,
+            
+            // 8. Crear signos vitales para pacientes
+            VitalSignSeeder::class,
+            
+            // 9. Crear facturas (depende de citas y pacientes)
+            InvoiceSeeder::class,
         ]);
+
+        $this->command->info('');
+        $this->command->info('🏥 ===== SISTEMA MÉDICO SEEDING COMPLETADO =====');
+        $this->command->info('');
+        $this->command->info('✅ Datos creados exitosamente:');
+        $this->command->info('   🏢 5 Clínicas con especialidades');
+        $this->command->info('   👨‍⚕️ 10 Doctores especializados');
+        $this->command->info('   👥 10 Pacientes con historiales completos');
+        $this->command->info('   💊 20 Medicamentos en inventario');
+        $this->command->info('   📅 Citas para las próximas 4 semanas');
+        $this->command->info('   🧪 50 Exámenes médicos con resultados');
+        $this->command->info('   🏥 30+ Cirugías programadas');
+        $this->command->info('   💓 Signos vitales por paciente');
+        $this->command->info('   💰 100+ Facturas con diferentes estados');
+        $this->command->info('');
+        $this->command->info('🔑 Usuarios de prueba:');
+        $this->command->info('   Admin: admin@example.com / password');
+        $this->command->info('   Doctores: [nombre].[apellido]@clinica.com / doctor123');
+        $this->command->info('');
+        $this->command->info('🌐 API disponible en: https://backendmedical-main-kqne9d.laravel.cloud/api');
+        $this->command->info('📖 Documentación: Ver archivo API_ENDPOINTS.md');
     }
 }
