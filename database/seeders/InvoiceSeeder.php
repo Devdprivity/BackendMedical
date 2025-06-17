@@ -51,6 +51,15 @@ class InvoiceSeeder extends Seeder
             $issueDate = Carbon::now()->subDays(rand(1, 90));
             $dueDate = $issueDate->copy()->addDays(30);
             
+            $invoiceNumberFormatted = 'INV-2024-' . str_pad($invoiceNumber, 4, '0', STR_PAD_LEFT);
+            
+            // Verificar si la factura ya existe
+            $existingInvoice = Invoice::where('invoice_number', $invoiceNumberFormatted)->first();
+            if ($existingInvoice) {
+                $invoiceNumber++;
+                continue;
+            }
+            
             // Seleccionar servicios (1-3 servicios por factura)
             $numServices = rand(1, 3);
             $selectedServices = array_rand($services, $numServices);
@@ -79,19 +88,15 @@ class InvoiceSeeder extends Seeder
             $tax = round($subtotal * 0.19, 2); // IVA 19%
             $total = $subtotal + $tax;
             
-            // Determinar estado de pago
+            // Determinar estado de pago y método
             $paymentStatus = 'pending';
-            $paymentDate = null;
             $paymentMethod = null;
             
             if ($issueDate->diffInDays(now()) > 7) {
-                $paymentStatus = ['paid', 'pending', 'overdue'][rand(0, 2)];
-                
                 // 70% pagadas, 20% pendientes, 10% vencidas
                 $rand = rand(1, 100);
                 if ($rand <= 70) {
                     $paymentStatus = 'paid';
-                    $paymentDate = $issueDate->copy()->addDays(rand(1, 20));
                     $paymentMethod = $paymentMethods[array_rand($paymentMethods)];
                 } elseif ($rand <= 90) {
                     $paymentStatus = 'pending';
@@ -102,27 +107,19 @@ class InvoiceSeeder extends Seeder
             
             $invoice = [
                 'patient_id' => rand(1, 10),
-                'appointment_id' => rand(1, 50), // Asumiendo 50+ citas
-                'invoice_number' => 'INV-2024-' . str_pad($invoiceNumber, 4, '0', STR_PAD_LEFT),
+                'invoice_number' => $invoiceNumberFormatted,
                 'issue_date' => $issueDate->format('Y-m-d'),
                 'due_date' => $dueDate->format('Y-m-d'),
+                'items' => json_encode($items),
                 'subtotal' => $subtotal,
                 'tax' => $tax,
-                'discount' => rand(0, 1) ? round($subtotal * 0.05, 2) : 0, // 5% descuento ocasional
                 'total' => $total,
                 'payment_status' => $paymentStatus,
-                'payment_date' => $paymentDate ? $paymentDate->format('Y-m-d') : null,
                 'payment_method' => $paymentMethod,
-                'notes' => rand(1, 100) <= 20 ? 'Paciente con seguro médico' : '',
-                'items' => json_encode($items),
-                'created_at' => $issueDate,
-                'updated_at' => $paymentDate ?? $issueDate
+                'notes' => rand(1, 100) <= 20 ? 'Paciente con seguro médico' : null,
+                'created_at' => now(),
+                'updated_at' => now()
             ];
-            
-            // Aplicar descuento al total
-            if ($invoice['discount'] > 0) {
-                $invoice['total'] = $invoice['subtotal'] + $invoice['tax'] - $invoice['discount'];
-            }
             
             $invoices[] = $invoice;
             $invoiceNumber++;
@@ -132,18 +129,9 @@ class InvoiceSeeder extends Seeder
         $specificInvoices = [
             [
                 'patient_id' => 1,
-                'appointment_id' => 1,
                 'invoice_number' => 'INV-2024-' . str_pad($invoiceNumber++, 4, '0', STR_PAD_LEFT),
                 'issue_date' => Carbon::today()->format('Y-m-d'),
                 'due_date' => Carbon::today()->addDays(30)->format('Y-m-d'),
-                'subtotal' => 120.00,
-                'tax' => 22.80,
-                'discount' => 0,
-                'total' => 142.80,
-                'payment_status' => 'pending',
-                'payment_date' => null,
-                'payment_method' => null,
-                'notes' => 'Consulta cardiológica de hoy',
                 'items' => json_encode([
                     [
                         'description' => 'Consulta especializada cardiología',
@@ -152,23 +140,20 @@ class InvoiceSeeder extends Seeder
                         'total' => 120.00
                     ]
                 ]),
+                'subtotal' => 120.00,
+                'tax' => 22.80,
+                'total' => 142.80,
+                'payment_status' => 'pending',
+                'payment_method' => null,
+                'notes' => 'Consulta cardiológica de hoy',
                 'created_at' => now(),
                 'updated_at' => now()
             ],
             [
                 'patient_id' => 3,
-                'appointment_id' => 3,
                 'invoice_number' => 'INV-2024-' . str_pad($invoiceNumber++, 4, '0', STR_PAD_LEFT),
                 'issue_date' => Carbon::yesterday()->format('Y-m-d'),
                 'due_date' => Carbon::yesterday()->addDays(30)->format('Y-m-d'),
-                'subtotal' => 2500.00,
-                'tax' => 475.00,
-                'discount' => 125.00, // Descuento por seguro
-                'total' => 2850.00,
-                'payment_status' => 'paid',
-                'payment_date' => Carbon::today()->format('Y-m-d'),
-                'payment_method' => 'insurance',
-                'notes' => 'Pago cubierto por seguro médico',
                 'items' => json_encode([
                     [
                         'description' => 'Colecistectomía laparoscópica',
@@ -177,24 +162,21 @@ class InvoiceSeeder extends Seeder
                         'total' => 2500.00
                     ]
                 ]),
-                'created_at' => Carbon::yesterday(),
+                'subtotal' => 2500.00,
+                'tax' => 475.00,
+                'total' => 2975.00,
+                'payment_status' => 'paid',
+                'payment_method' => 'insurance',
+                'notes' => 'Pago cubierto por seguro médico',
+                'created_at' => now(),
                 'updated_at' => now()
             ],
             // Factura vencida para testing
             [
                 'patient_id' => 8,
-                'appointment_id' => 25,
                 'invoice_number' => 'INV-2024-' . str_pad($invoiceNumber++, 4, '0', STR_PAD_LEFT),
                 'issue_date' => Carbon::now()->subDays(45)->format('Y-m-d'),
                 'due_date' => Carbon::now()->subDays(15)->format('Y-m-d'),
-                'subtotal' => 350.00,
-                'tax' => 66.50,
-                'discount' => 0,
-                'total' => 416.50,
-                'payment_status' => 'overdue',
-                'payment_date' => null,
-                'payment_method' => null,
-                'notes' => 'Paciente no responde a llamadas de cobranza',
                 'items' => json_encode([
                     [
                         'description' => 'Consulta medicina interna',
@@ -207,45 +189,47 @@ class InvoiceSeeder extends Seeder
                         'quantity' => 1,
                         'unit_price' => 25.00,
                         'total' => 25.00
-                    ],
-                    [
-                        'description' => 'Química sanguínea',
-                        'quantity' => 1,
-                        'unit_price' => 35.00,
-                        'total' => 35.00
-                    ],
-                    [
-                        'description' => 'Radiografía de tórax',
-                        'quantity' => 1,
-                        'unit_price' => 45.00,
-                        'total' => 45.00
-                    ],
-                    [
-                        'description' => 'Medicamentos',
-                        'quantity' => 3,
-                        'unit_price' => 45.00,
-                        'total' => 135.00
                     ]
                 ]),
-                'created_at' => Carbon::now()->subDays(45),
-                'updated_at' => Carbon::now()->subDays(45)
+                'subtotal' => 130.00,
+                'tax' => 24.70,
+                'total' => 154.70,
+                'payment_status' => 'overdue',
+                'payment_method' => null,
+                'notes' => 'Paciente no responde a llamadas de cobranza',
+                'created_at' => now(),
+                'updated_at' => now()
             ]
         ];
         
-        $invoices = array_merge($invoices, $specificInvoices);
-        
-        foreach ($invoices as $invoiceData) {
-            Invoice::create($invoiceData);
+        // Verificar facturas específicas que no existan
+        foreach ($specificInvoices as $invoice) {
+            $existingInvoice = Invoice::where('invoice_number', $invoice['invoice_number'])->first();
+            
+            if (!$existingInvoice) {
+                $invoices[] = $invoice;
+            } else {
+                $this->command->info("⚠️  Factura {$invoice['invoice_number']} ya existe, saltando...");
+            }
         }
         
-        $this->command->info('✅ Facturas creadas exitosamente!');
-        $this->command->info('💰 Se crearon ' . count($invoices) . ' facturas con diferentes estados de pago.');
+        // Insertar facturas una por una para evitar duplicados
+        $created = 0;
+        foreach ($invoices as $invoiceData) {
+            try {
+                // Verificar nuevamente antes de crear
+                $existingInvoice = Invoice::where('invoice_number', $invoiceData['invoice_number'])->first();
+                
+                if (!$existingInvoice) {
+                    Invoice::create($invoiceData);
+                    $created++;
+                }
+            } catch (\Exception $e) {
+                $this->command->warn("⚠️  Error creando factura {$invoiceData['invoice_number']}: " . $e->getMessage());
+            }
+        }
         
-        // Estadísticas
-        $paid = collect($invoices)->where('payment_status', 'paid')->count();
-        $pending = collect($invoices)->where('payment_status', 'pending')->count();
-        $overdue = collect($invoices)->where('payment_status', 'overdue')->count();
-        
-        $this->command->info("📊 Estadísticas: {$paid} pagadas, {$pending} pendientes, {$overdue} vencidas");
+        $this->command->info("✅ {$created} facturas creadas exitosamente!");
+        $this->command->info('💰 Se crearon facturas de los últimos 3 meses con diferentes estados de pago.');
     }
 } 
