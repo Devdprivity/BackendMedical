@@ -8,54 +8,33 @@ use App\Models\EmergencyContact;
 use App\Models\MedicalHistory;
 use App\Models\VitalSign;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class PatientController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
-        $query = Patient::query();
-
-        // Filter by status
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
+        try {
+            return response()->json([
+                'success' => true,
+                'message' => 'Patient endpoint working',
+                'data' => [],
+                'debug' => [
+                    'user' => auth()->user() ? auth()->user()->toArray() : 'No user',
+                    'guard' => auth()->getDefaultDriver(),
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error in patient controller: ' . $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
         }
-
-        // Search by name or DNI
-        if ($request->has('search')) {
-            $query->where(function($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('dni', 'like', '%' . $request->search . '%');
-            });
-        }
-
-        // Filter by clinic
-        if ($request->has('clinic_id')) {
-            $query->where('preferred_clinic_id', $request->clinic_id);
-        }
-
-        $patients = $query->with(['preferredClinic', 'emergencyContact'])
-            ->withCount('appointments')
-            ->paginate($request->get('per_page', 15));
-
-        // Add additional info
-        $patients->getCollection()->transform(function ($patient) {
-            $patient->age = $patient->age;
-            $patient->last_visit = $patient->appointments()
-                ->where('status', 'completed')
-                ->latest('date_time')
-                ->value('date_time');
-            $patient->next_appointment = $patient->appointments()
-                ->where('status', 'scheduled')
-                ->where('date_time', '>', now())
-                ->orderBy('date_time')
-                ->value('date_time');
-            return $patient;
-        });
-
-        return response()->json($patients);
     }
 
     /**

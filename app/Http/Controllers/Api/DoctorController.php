@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log;
 
 class DoctorController extends Controller
 {
@@ -22,58 +23,25 @@ class DoctorController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            $query = Doctor::with(['user', 'clinics']);
-
-            // Filter by clinic if provided
-            if ($request->has('clinic_id')) {
-                $query->whereHas('clinics', function ($q) use ($request) {
-                    $q->where('clinic_id', $request->clinic_id);
-                });
-            }
-
-            // Filter by specialty if provided
-            if ($request->has('specialty')) {
-                $query->where('specialty', 'like', '%' . $request->specialty . '%');
-            }
-
-            // Search by name
-            if ($request->has('search')) {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', '%' . $search . '%')
-                      ->orWhere('email', 'like', '%' . $search . '%')
-                      ->orWhereHas('user', function ($userQuery) use ($search) {
-                          $userQuery->where('name', 'like', '%' . $search . '%')
-                                   ->orWhere('email', 'like', '%' . $search . '%');
-                      });
-                });
-            }
-
-            // Filter by status
-            if ($request->has('status')) {
-                $query->where('status', $request->status);
-            }
-
-            $doctors = $query->paginate($request->get('per_page', 15));
-
+            Log::info('DoctorController@index called');
+            
+            // Simple test response first
             return response()->json([
                 'success' => true,
-                'data' => $doctors->items(),
-                'pagination' => [
-                    'current_page' => $doctors->currentPage(),
-                    'per_page' => $doctors->perPage(),
-                    'total' => $doctors->total(),
-                    'last_page' => $doctors->lastPage(),
+                'message' => 'Doctor endpoint working',
+                'data' => [],
+                'debug' => [
+                    'user' => auth()->user() ? auth()->user()->toArray() : 'No user',
+                    'guard' => auth()->getDefaultDriver(),
                 ]
             ]);
+            
         } catch (\Exception $e) {
+            Log::error('DoctorController@index error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Error fetching doctors: ' . $e->getMessage(),
-                'error_details' => [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                ]
+                'message' => 'Error in doctor controller: ' . $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ], 500);
         }
     }
@@ -83,93 +51,11 @@ class DoctorController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'user_name' => 'required|string|max:255',
-            'user_email' => 'required|string|email|max:255|unique:users,email',
-            'user_password' => 'required|string|min:8',
-            'user_phone' => 'required|string|max:20',
-            'name' => 'required|string|max:255',
-            'specialty' => 'required|string|max:100',
-            'license_number' => 'required|string|max:50|unique:doctors',
-            'email' => 'required|string|email|max:255|unique:doctors',
-            'phone' => 'required|string|max:20',
-            'emergency_phone' => 'nullable|string|max:20',
-            'address' => 'required|string',
-            'experience_years' => 'required|integer|min:0|max:80',
-            'education' => 'required|array',
-            'certifications' => 'nullable|array',
-            'languages' => 'nullable|array',
-            'bio' => 'nullable|string',
-            'photo_url' => 'nullable|string|url',
-            'status' => 'nullable|in:active,inactive,vacation,leave',
-            'clinic_ids' => 'required|array',
-            'clinic_ids.*' => 'exists:clinics,id',
-            'schedules' => 'nullable|array',
+        return response()->json([
+            'success' => true,
+            'message' => 'Store method working',
+            'data' => null
         ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation errors',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        try {
-            // Create user first
-            $user = User::create([
-                'name' => $request->user_name,
-                'email' => $request->user_email,
-                'password' => Hash::make($request->user_password),
-                'phone' => $request->user_phone,
-                'role' => 'doctor',
-            ]);
-
-            // Create doctor
-            $doctor = Doctor::create([
-                'user_id' => $user->id,
-                'name' => $request->name,
-                'specialty' => $request->specialty,
-                'license_number' => $request->license_number,
-                'email' => $request->email,
-                'phone' => $request->phone,
-                'emergency_phone' => $request->emergency_phone,
-                'address' => $request->address,
-                'experience_years' => $request->experience_years,
-                'education' => $request->education,
-                'certifications' => $request->certifications ?? [],
-                'languages' => $request->languages ?? [],
-                'bio' => $request->bio,
-                'photo_url' => $request->photo_url,
-                'status' => $request->status ?? 'active',
-            ]);
-
-            // Attach clinics
-            if ($request->has('clinic_ids')) {
-                $clinicData = [];
-                foreach ($request->clinic_ids as $index => $clinicId) {
-                    $clinicData[$clinicId] = [
-                        'status' => 'active',
-                        'schedule' => $request->schedules[$index] ?? null,
-                    ];
-                }
-                $doctor->clinics()->attach($clinicData);
-            }
-
-            $doctor->load(['user', 'clinics']);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Doctor created successfully',
-                'data' => $doctor
-            ], 201);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error creating doctor: ' . $e->getMessage()
-            ], 500);
-        }
     }
 
     /**
@@ -177,20 +63,11 @@ class DoctorController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        try {
-            $doctor = Doctor::with(['user', 'clinics'])->findOrFail($id);
-
-            return response()->json([
-                'success' => true,
-                'data' => $doctor
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Doctor not found'
-            ], 404);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Show method working',
+            'data' => ['id' => $id]
+        ]);
     }
 
     /**
@@ -198,82 +75,11 @@ class DoctorController extends Controller
      */
     public function update(Request $request, string $id): JsonResponse
     {
-        try {
-            $doctor = Doctor::findOrFail($id);
-
-            $validator = Validator::make($request->all(), [
-                'user_name' => 'sometimes|string|max:255',
-                'user_email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($doctor->user_id)],
-                'user_password' => 'sometimes|string|min:8',
-                'user_phone' => 'sometimes|string|max:20',
-                'name' => 'sometimes|string|max:255',
-                'specialty' => 'sometimes|string|max:100',
-                'license_number' => ['sometimes', 'string', 'max:50', Rule::unique('doctors')->ignore($id)],
-                'email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('doctors')->ignore($id)],
-                'phone' => 'sometimes|string|max:20',
-                'emergency_phone' => 'nullable|string|max:20',
-                'address' => 'sometimes|string',
-                'experience_years' => 'sometimes|integer|min:0|max:80',
-                'education' => 'sometimes|array',
-                'certifications' => 'nullable|array',
-                'languages' => 'nullable|array',
-                'bio' => 'nullable|string',
-                'photo_url' => 'nullable|string|url',
-                'status' => 'sometimes|in:active,inactive,vacation,leave',
-                'clinic_ids' => 'sometimes|array',
-                'clinic_ids.*' => 'exists:clinics,id',
-                'schedules' => 'nullable|array',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation errors',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            // Update user data if provided
-            $userData = [];
-            if ($request->has('user_name')) $userData['name'] = $request->user_name;
-            if ($request->has('user_email')) $userData['email'] = $request->user_email;
-            if ($request->has('user_phone')) $userData['phone'] = $request->user_phone;
-            if ($request->has('user_password')) $userData['password'] = Hash::make($request->user_password);
-
-            if (!empty($userData)) {
-                $doctor->user->update($userData);
-            }
-
-            // Update doctor data
-            $doctorData = $request->except(['user_name', 'user_email', 'user_phone', 'user_password', 'clinic_ids', 'schedules']);
-            $doctor->update($doctorData);
-
-            // Update clinic associations if provided
-            if ($request->has('clinic_ids')) {
-                $clinicData = [];
-                foreach ($request->clinic_ids as $index => $clinicId) {
-                    $clinicData[$clinicId] = [
-                        'status' => 'active',
-                        'schedule' => $request->schedules[$index] ?? null,
-                    ];
-                }
-                $doctor->clinics()->sync($clinicData);
-            }
-
-            $doctor->load(['user', 'clinics']);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Doctor updated successfully',
-                'data' => $doctor
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error updating doctor: ' . $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Update method working',
+            'data' => ['id' => $id]
+        ]);
     }
 
     /**
@@ -281,34 +87,11 @@ class DoctorController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
-        try {
-            $doctor = Doctor::findOrFail($id);
-            
-            // Check if doctor has appointments
-            $hasAppointments = Appointment::where('doctor_id', $id)->exists();
-            if ($hasAppointments) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot delete doctor with existing appointments'
-                ], 400);
-            }
-
-            $user = $doctor->user;
-            $doctor->clinics()->detach(); // Remove clinic associations
-            $doctor->delete();
-            $user->delete();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Doctor deleted successfully'
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error deleting doctor: ' . $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Destroy method working',
+            'data' => ['id' => $id]
+        ]);
     }
 
     /**
