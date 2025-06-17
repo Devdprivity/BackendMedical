@@ -847,8 +847,8 @@
                     <h1 id="getting-started">Getting Started</h1>
                     <p>
                         Welcome to the Medical Management System API documentation. This comprehensive RESTful API 
-                        provides everything you need to build healthcare management applications with Laravel's 
-                        robust architecture.
+                        provides everything you need to build modern healthcare management applications with Laravel's 
+                        robust and secure architecture.
                     </p>
 
                     <h2 id="try-it-online">Try It Online</h2>
