@@ -4,23 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Doctor;
-use App\Models\User;
-use App\Models\Appointment;
-use App\Models\Surgery;
-use App\Models\MedicalExam;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Log;
 
 class DoctorController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         $query = Doctor::query();
 
@@ -48,7 +39,7 @@ class DoctorController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request)
     {
         $request->validate([
             'name' => 'required|string|max:255',
@@ -69,7 +60,7 @@ class DoctorController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Doctor $doctor): JsonResponse
+    public function show(Doctor $doctor)
     {
         $doctor->load(['user', 'clinics']);
 
@@ -79,7 +70,7 @@ class DoctorController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Doctor $doctor): JsonResponse
+    public function update(Request $request, Doctor $doctor)
     {
         $request->validate([
             'name' => 'string|max:255',
@@ -100,7 +91,7 @@ class DoctorController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Doctor $doctor): JsonResponse
+    public function destroy(Doctor $doctor)
     {
         $doctor->delete();
 
@@ -110,7 +101,7 @@ class DoctorController extends Controller
     /**
      * Get appointments for a specific doctor.
      */
-    public function appointments(Doctor $doctor, Request $request): JsonResponse
+    public function appointments(Doctor $doctor, Request $request)
     {
         $query = $doctor->appointments()
             ->with(['patient', 'clinic']);
@@ -138,7 +129,7 @@ class DoctorController extends Controller
     /**
      * Get today's appointments for a specific doctor.
      */
-    public function todayAppointments(Doctor $doctor): JsonResponse
+    public function todayAppointments(Doctor $doctor)
     {
         $appointments = $doctor->appointments()
             ->with(['patient', 'clinic'])
@@ -152,7 +143,7 @@ class DoctorController extends Controller
     /**
      * Get surgeries for a specific doctor.
      */
-    public function surgeries(Doctor $doctor): JsonResponse
+    public function surgeries(Doctor $doctor)
     {
         $surgeries = $doctor->surgeries()
             ->with(['patient', 'clinic'])
@@ -165,7 +156,7 @@ class DoctorController extends Controller
     /**
      * Get requested exams for a specific doctor.
      */
-    public function requestedExams(Doctor $doctor): JsonResponse
+    public function requestedExams(Doctor $doctor)
     {
         $exams = $doctor->requestedExams()
             ->with(['patient', 'clinic'])

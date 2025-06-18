@@ -6,8 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Medication;
 use App\Models\MedicationMovement;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Validator;
 
 class MedicationController extends Controller
 {
@@ -62,9 +60,9 @@ class MedicationController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        $request->validate([
             'name' => 'required|string|max:255',
             'active_ingredient' => 'required|string|max:255',
             'dosage' => 'required|string|max:100',
@@ -83,323 +81,169 @@ class MedicationController extends Controller
             'requires_prescription' => 'boolean',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation errors',
-                'errors' => $validator->errors()
-            ], 422);
+        $medication = Medication::create($request->all());
+
+        // Create initial stock movement
+        if ($medication->current_stock > 0) {
+            MedicationMovement::create([
+                'medication_id' => $medication->id,
+                'movement_type' => 'in',
+                'quantity' => $medication->current_stock,
+                'reason' => 'Initial stock',
+                'movement_date' => now(),
+            ]);
         }
 
-        try {
-            $medication = Medication::create($request->all());
-
-            // Create initial stock movement
-            if ($medication->current_stock > 0) {
-                MedicationMovement::create([
-                    'medication_id' => $medication->id,
-                    'movement_type' => 'in',
-                    'quantity' => $medication->current_stock,
-                    'reason' => 'Initial stock',
-                    'movement_date' => now(),
-                ]);
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Medication created successfully',
-                'data' => $medication
-            ], 201);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error creating medication: ' . $e->getMessage()
-            ], 500);
-        }
+        return response()->json($medication, 201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(string $id): JsonResponse
+    public function show(Medication $medication)
     {
-        try {
-            $medication = Medication::with(['movements' => function ($query) {
-                $query->orderBy('movement_date', 'desc')->limit(10);
-            }])->findOrFail($id);
+        $medication->load(['movements' => function ($query) {
+            $query->orderBy('movement_date', 'desc')->limit(10);
+        }]);
 
-            return response()->json([
-                'success' => true,
-                'data' => $medication
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Medication not found'
-            ], 404);
-        }
+        return response()->json($medication);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id): JsonResponse
+    public function update(Request $request, Medication $medication)
     {
-        try {
-            $medication = Medication::findOrFail($id);
+        $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'active_ingredient' => 'sometimes|string|max:255',
+            'dosage' => 'sometimes|string|max:100',
+            'form' => 'sometimes|string|max:100',
+            'manufacturer' => 'sometimes|string|max:255',
+            'category' => 'sometimes|string|max:100',
+            'barcode' => 'nullable|string|unique:medications,barcode,' . $medication->id,
+            'description' => 'nullable|string',
+            'contraindications' => 'nullable|string',
+            'side_effects' => 'nullable|string',
+            'storage_conditions' => 'nullable|string',
+            'unit_price' => 'sometimes|numeric|min:0',
+            'minimum_stock' => 'sometimes|integer|min:0',
+            'expiration_date' => 'sometimes|date',
+            'requires_prescription' => 'boolean',
+        ]);
 
-            $validator = Validator::make($request->all(), [
-                'name' => 'sometimes|string|max:255',
-                'active_ingredient' => 'sometimes|string|max:255',
-                'dosage' => 'sometimes|string|max:100',
-                'form' => 'sometimes|string|max:100',
-                'manufacturer' => 'sometimes|string|max:255',
-                'category' => 'sometimes|string|max:100',
-                'barcode' => 'nullable|string|unique:medications,barcode,' . $id,
-                'description' => 'nullable|string',
-                'contraindications' => 'nullable|string',
-                'side_effects' => 'nullable|string',
-                'storage_conditions' => 'nullable|string',
-                'unit_price' => 'sometimes|numeric|min:0',
-                'minimum_stock' => 'sometimes|integer|min:0',
-                'expiration_date' => 'sometimes|date',
-                'requires_prescription' => 'boolean',
-            ]);
+        // Don't allow direct stock updates through this endpoint
+        $updateData = $request->except(['current_stock']);
+        $medication->update($updateData);
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation errors',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            // Don't allow direct stock updates through this endpoint
-            $updateData = $request->except(['current_stock']);
-            $medication->update($updateData);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Medication updated successfully',
-                'data' => $medication
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error updating medication: ' . $e->getMessage()
-            ], 500);
-        }
+        return response()->json($medication);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id): JsonResponse
+    public function destroy(Medication $medication)
     {
-        try {
-            $medication = Medication::findOrFail($id);
-            
-            // Don't allow deletion if there's current stock
-            if ($medication->current_stock > 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot delete medication with current stock. Please reduce stock to zero first.'
-                ], 400);
-            }
+        $medication->delete();
 
-            $medication->delete();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Medication deleted successfully'
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error deleting medication: ' . $e->getMessage()
-            ], 500);
-        }
+        return response()->json(['message' => 'Medication deleted successfully']);
     }
 
     /**
-     * Get medications with low stock
+     * Get medications with low stock.
      */
-    public function lowStock(Request $request): JsonResponse
+    public function lowStock(Request $request)
     {
-        try {
-            $query = Medication::whereColumn('current_stock', '<=', 'minimum_stock')
-                ->where('current_stock', '>=', 0);
+        $query = Medication::whereColumn('current_stock', '<=', 'minimum_stock');
 
-            $medications = $query->orderBy('current_stock')
-                ->paginate($request->get('per_page', 15));
-
-            return response()->json([
-                'success' => true,
-                'data' => $medications->items(),
-                'pagination' => [
-                    'current_page' => $medications->currentPage(),
-                    'per_page' => $medications->perPage(),
-                    'total' => $medications->total(),
-                    'last_page' => $medications->lastPage(),
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetching low stock medications: ' . $e->getMessage()
-            ], 500);
+        // Filter by clinic if specified
+        if ($request->has('clinic_id')) {
+            $query->where('clinic_id', $request->clinic_id);
         }
+
+        $lowStockMedications = $query->orderBy('current_stock')
+            ->paginate($request->get('per_page', 15));
+
+        return response()->json($lowStockMedications);
     }
 
     /**
-     * Get medications expiring soon
+     * Get medications expiring soon.
      */
-    public function expiring(Request $request): JsonResponse
+    public function expiring(Request $request)
     {
-        try {
-            $days = $request->get('days', 30); // Default to 30 days
-            
-            $query = Medication::where('expiration_date', '<=', now()->addDays($days))
-                ->where('expiration_date', '>', now())
-                ->where('current_stock', '>', 0);
+        $days = $request->get('days', 30);
+        
+        $query = Medication::where('expiration_date', '<=', now()->addDays($days))
+            ->where('expiration_date', '>', now());
 
-            $medications = $query->orderBy('expiration_date')
-                ->paginate($request->get('per_page', 15));
+        $expiringMedications = $query->orderBy('expiration_date')
+            ->paginate($request->get('per_page', 15));
 
-            return response()->json([
-                'success' => true,
-                'data' => $medications->items(),
-                'pagination' => [
-                    'current_page' => $medications->currentPage(),
-                    'per_page' => $medications->perPage(),
-                    'total' => $medications->total(),
-                    'last_page' => $medications->lastPage(),
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetching expiring medications: ' . $e->getMessage()
-            ], 500);
-        }
+        return response()->json($expiringMedications);
     }
 
     /**
-     * Add stock movement
+     * Add stock movement.
      */
-    public function addMovement(Request $request, string $id): JsonResponse
+    public function addMovement(Request $request, Medication $medication)
     {
-        try {
-            $medication = Medication::findOrFail($id);
+        $request->validate([
+            'movement_type' => 'required|in:in,out',
+            'quantity' => 'required|integer|min:1',
+            'reason' => 'required|string',
+            'movement_date' => 'required|date',
+        ]);
 
-            $validator = Validator::make($request->all(), [
-                'movement_type' => 'required|in:in,out',
-                'quantity' => 'required|integer|min:1',
-                'reason' => 'required|string|max:255',
-                'movement_date' => 'required|date',
-                'notes' => 'nullable|string',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation errors',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            // Check if there's enough stock for outgoing movements
-            if ($request->movement_type === 'out' && $medication->current_stock < $request->quantity) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Insufficient stock. Current stock: ' . $medication->current_stock
-                ], 400);
-            }
-
-            // Create movement record
-            $movement = MedicationMovement::create([
-                'medication_id' => $medication->id,
-                'movement_type' => $request->movement_type,
-                'quantity' => $request->quantity,
-                'reason' => $request->reason,
-                'movement_date' => $request->movement_date,
-                'notes' => $request->notes,
-            ]);
-
-            // Update medication stock
-            if ($request->movement_type === 'in') {
-                $medication->increment('current_stock', $request->quantity);
-            } else {
-                $medication->decrement('current_stock', $request->quantity);
-            }
-
-            $medication->refresh();
-
+        // Check if there's enough stock for outgoing movements
+        if ($request->movement_type === 'out' && $medication->current_stock < $request->quantity) {
             return response()->json([
-                'success' => true,
-                'message' => 'Stock movement recorded successfully',
-                'data' => [
-                    'movement' => $movement,
-                    'updated_stock' => $medication->current_stock
-                ]
-            ], 201);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error recording stock movement: ' . $e->getMessage()
-            ], 500);
+                'message' => 'Insufficient stock'
+            ], 400);
         }
+
+        $movement = MedicationMovement::create([
+            'medication_id' => $medication->id,
+            'movement_type' => $request->movement_type,
+            'quantity' => $request->quantity,
+            'reason' => $request->reason,
+            'movement_date' => $request->movement_date,
+        ]);
+
+        // Update medication stock
+        if ($request->movement_type === 'in') {
+            $medication->increment('current_stock', $request->quantity);
+        } else {
+            $medication->decrement('current_stock', $request->quantity);
+        }
+
+        return response()->json($movement, 201);
     }
 
     /**
-     * Get medication movements
+     * Get stock movements for a medication.
      */
-    public function movements(Request $request, string $id): JsonResponse
+    public function movements(Request $request, Medication $medication)
     {
-        try {
-            $medication = Medication::findOrFail($id);
+        $query = $medication->movements();
 
-            $query = MedicationMovement::where('medication_id', $id);
-
-            // Filter by movement type
-            if ($request->has('movement_type')) {
-                $query->where('movement_type', $request->movement_type);
-            }
-
-            // Filter by date range
-            if ($request->has('start_date')) {
-                $query->whereDate('movement_date', '>=', $request->start_date);
-            }
-            if ($request->has('end_date')) {
-                $query->whereDate('movement_date', '<=', $request->end_date);
-            }
-
-            $movements = $query->orderBy('movement_date', 'desc')
-                ->paginate($request->get('per_page', 15));
-
-            return response()->json([
-                'success' => true,
-                'data' => $movements->items(),
-                'pagination' => [
-                    'current_page' => $movements->currentPage(),
-                    'per_page' => $movements->perPage(),
-                    'total' => $movements->total(),
-                    'last_page' => $movements->lastPage(),
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetching medication movements: ' . $e->getMessage()
-            ], 500);
+        // Filter by movement type
+        if ($request->has('movement_type')) {
+            $query->where('movement_type', $request->movement_type);
         }
+
+        // Filter by date range
+        if ($request->has('from_date')) {
+            $query->whereDate('movement_date', '>=', $request->from_date);
+        }
+
+        if ($request->has('to_date')) {
+            $query->whereDate('movement_date', '<=', $request->to_date);
+        }
+
+        $movements = $query->orderBy('movement_date', 'desc')
+            ->paginate($request->get('per_page', 15));
+
+        return response()->json($movements);
     }
 }

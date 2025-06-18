@@ -8,7 +8,6 @@ use App\Models\EmergencyContact;
 use App\Models\MedicalHistory;
 use App\Models\VitalSign;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 
 class PatientController extends Controller
 {
