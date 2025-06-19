@@ -10,6 +10,8 @@ class Medication extends Model
     use HasFactory;
 
     protected $fillable = [
+        'created_by',
+        'clinic_id',
         'commercial_name',
         'generic_name',
         'manufacturer',
@@ -85,5 +87,21 @@ class Medication extends Model
     public function isNearExpiration()
     {
         return $this->expiration_date <= now()->addDays(30);
+    }
+
+    /**
+     * Get the user who created this medication.
+     */
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Get the clinic that owns this medication.
+     */
+    public function clinic()
+    {
+        return $this->belongsTo(Clinic::class);
     }
 }

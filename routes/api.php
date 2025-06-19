@@ -12,6 +12,25 @@ use App\Http\Controllers\Api\MedicalExamController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MedicationController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\BookingController;
+
+// Public booking API routes (no authentication required)
+Route::prefix('booking')->name('booking.api.')->group(function () {
+    // API para obtener información del médico/clínica
+    Route::get('/{slug}/info', [BookingController::class, 'getProviderInfo'])->name('info');
+    
+    // API para obtener sucursales (si es clínica)
+    Route::get('/{slug}/locations', [BookingController::class, 'getLocations'])->name('locations');
+    
+    // API para obtener médicos por sucursal y especialidad
+    Route::get('/{slug}/doctors', [BookingController::class, 'getDoctors'])->name('doctors');
+    
+    // API para obtener horarios disponibles
+    Route::get('/{slug}/availability', [BookingController::class, 'getAvailability'])->name('availability');
+    
+    // Crear reserva pública
+    Route::post('/{slug}/reserve', [BookingController::class, 'createReservation'])->name('reserve');
+});
 
 // Authentication routes
 Route::post('/auth/login', [AuthController::class, 'login']);

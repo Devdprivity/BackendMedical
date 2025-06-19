@@ -25,6 +25,9 @@ class DatabaseSeeder extends Seeder
 
         // Ejecutar seeders en orden de dependencias
         $this->call([
+            // 0. Crear planes de suscripción (base para usuarios)
+            SubscriptionPlansSeeder::class,
+            
             // 1. Crear usuarios admin y clínicas (base del sistema)
             AdminUserSeeder::class,
             ClinicSeeder::class,
@@ -41,16 +44,19 @@ class DatabaseSeeder extends Seeder
             // 5. Crear citas médicas
             AppointmentSeeder::class,
             
-            // 6. Crear exámenes médicos con resultados
+            // 6. Crear videollamadas de prueba (depende de citas)
+            VideoCallSeeder::class,
+            
+            // 7. Crear exámenes médicos con resultados
             MedicalExamSeeder::class,
             
-            // 7. Crear cirugías
+            // 8. Crear cirugías
             SurgerySeeder::class,
             
-            // 8. Crear signos vitales para pacientes
+            // 9. Crear signos vitales para pacientes
             VitalSignSeeder::class,
             
-            // 9. Crear facturas (depende de citas y pacientes)
+            // 10. Crear facturas (depende de citas y pacientes)
             InvoiceSeeder::class,
         ]);
 
@@ -58,11 +64,13 @@ class DatabaseSeeder extends Seeder
         $this->command->info('🏥 ===== SISTEMA MÉDICO SEEDING COMPLETADO =====');
         $this->command->info('');
         $this->command->info('✅ Datos creados exitosamente:');
+        $this->command->info('   💳 5 Planes de suscripción (incluyendo plan GRATUITO)');
         $this->command->info('   🏢 5 Clínicas con especialidades');
         $this->command->info('   👨‍⚕️ 10 Doctores especializados');
         $this->command->info('   👥 10 Pacientes con historiales completos');
         $this->command->info('   💊 20 Medicamentos en inventario');
         $this->command->info('   📅 Citas para las próximas 4 semanas');
+        $this->command->info('   📹 Videollamadas de prueba configuradas');
         $this->command->info('   🧪 50 Exámenes médicos con resultados');
         $this->command->info('   🏥 30+ Cirugías programadas');
         $this->command->info('   💓 Signos vitales por paciente');
@@ -71,6 +79,11 @@ class DatabaseSeeder extends Seeder
         $this->command->info('🔑 Usuarios de prueba:');
         $this->command->info('   Admin: admin@example.com / password');
         $this->command->info('   Doctores: [nombre].[apellido]@clinica.com / doctor123');
+        $this->command->info('');
+        $this->command->info('📹 Sistema de Videollamadas:');
+        $this->command->info('   ✅ Integración con Jitsi Meet configurada');
+        $this->command->info('   ✅ Citas de videoconsulta de prueba creadas');
+        $this->command->info('   ✅ Interfaz de videollamadas disponible');
         $this->command->info('');
         $this->command->info('🌐 API disponible en: https://backendmedical-main-kqne9d.laravel.cloud/api');
         $this->command->info('📖 Documentación: Ver archivo API_ENDPOINTS.md');

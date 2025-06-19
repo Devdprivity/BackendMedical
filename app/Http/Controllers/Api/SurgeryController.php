@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Surgery;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class SurgeryController extends Controller
 {
@@ -13,44 +14,48 @@ class SurgeryController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Surgery::with(['patient', 'mainSurgeon', 'clinic']);
+        $query = Surgery::with(['patient', 'mainSurgeon']);
+        
+        // If user is not admin, only show surgeries they are involved in
+        $user = auth()->user();
+        if ($user->role !== 'admin') {
+            $doctor = $user->doctor;
+            if ($doctor) {
+                // Show surgeries where this doctor is the main surgeon
+                $query->where('main_surgeon_id', $doctor->id);
+            } else {
+                // Non-doctor users see no surgeries
+                $query->where('id', -1); // This will return empty result
+            }
+        }
 
         // Filter by status
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
 
-        // Filter by date range
-        if ($request->has('from_date')) {
-            $query->whereDate('surgery_date', '>=', $request->from_date);
-        }
-
-        if ($request->has('to_date')) {
-            $query->whereDate('surgery_date', '<=', $request->to_date);
-        }
-
-        // Filter by surgeon
-        if ($request->has('surgeon_id')) {
+        // Filter by surgeon (only for admin)
+        if ($request->has('surgeon_id') && $user->role === 'admin') {
             $query->where('main_surgeon_id', $request->surgeon_id);
         }
 
-        // Filter by clinic
-        if ($request->has('clinic_id')) {
-            $query->where('clinic_id', $request->clinic_id);
+        // Filter by date range
+        if ($request->has('from_date')) {
+            $query->whereDate('date_time', '>=', $request->from_date);
         }
 
-        // Search by patient name or surgery type
+        if ($request->has('to_date')) {
+            $query->whereDate('date_time', '<=', $request->to_date);
+        }
+
+        // Search by patient name
         if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('surgery_type', 'like', '%' . $search . '%')
-                  ->orWhereHas('patient', function ($patientQuery) use ($search) {
-                      $patientQuery->where('name', 'like', '%' . $search . '%');
-                  });
+            $query->whereHas('patient', function($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->search . '%');
             });
         }
 
-        $surgeries = $query->orderBy('surgery_date', 'desc')
+        $surgeries = $query->orderBy('date_time', 'desc')
             ->paginate($request->get('per_page', 15));
 
         return response()->json($surgeries);
@@ -59,47 +64,71 @@ class SurgeryController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
+        $user = auth()->user();
+        
+        // If user is not admin, set main_surgeon_id to their own doctor record
+        if ($user->role !== 'admin') {
+            $doctor = $user->doctor;
+            if (!$doctor) {
+                return response()->json([
+                    'message' => 'No tienes un perfil de doctor asociado',
+                    'errors' => ['main_surgeon_id' => ['Usuario no tiene perfil de doctor']]
+                ], 403);
+            }
+            $request->merge(['main_surgeon_id' => $doctor->id]);
+        }
+        
         $request->validate([
             'patient_id' => 'required|exists:patients,id',
             'main_surgeon_id' => 'required|exists:doctors,id',
-            'clinic_id' => 'required|exists:clinics,id',
             'surgery_type' => 'required|string|max:255',
-            'surgery_date' => 'required|date|after:now',
+            'date_time' => 'required|date|after:now',
             'estimated_duration' => 'required|integer|min:30|max:720',
             'operating_room' => 'required|string|max:50',
             'anesthesia_type' => 'required|string|max:100',
-            'pre_operative_notes' => 'nullable|string',
-            'urgency_level' => 'required|in:elective,urgent,emergency',
+            'preop_notes' => 'nullable|string',
             'assistant_surgeons' => 'nullable|array',
-            'assistant_surgeons.*' => 'exists:doctors,id',
+            'required_equipment' => 'nullable|array',
         ]);
 
         $surgery = Surgery::create([
             'patient_id' => $request->patient_id,
             'main_surgeon_id' => $request->main_surgeon_id,
-            'clinic_id' => $request->clinic_id,
             'surgery_type' => $request->surgery_type,
-            'surgery_date' => $request->surgery_date,
+            'date_time' => $request->date_time,
             'estimated_duration' => $request->estimated_duration,
             'operating_room' => $request->operating_room,
             'anesthesia_type' => $request->anesthesia_type,
-            'pre_operative_notes' => $request->pre_operative_notes,
-            'urgency_level' => $request->urgency_level,
+            'preop_notes' => $request->preop_notes,
             'assistant_surgeons' => $request->assistant_surgeons ?? [],
+            'required_equipment' => $request->required_equipment ?? [],
             'status' => 'scheduled',
         ]);
 
-        return response()->json($surgery->load(['patient', 'mainSurgeon', 'clinic']), 201);
+        return response()->json($surgery->load(['patient', 'mainSurgeon']), 201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Surgery $surgery)
+    public function show($id): JsonResponse
     {
-        $surgery->load(['patient', 'mainSurgeon', 'clinic']);
+        $surgery = Surgery::findOrFail($id);
+        
+        // Check if user can access this surgery
+        $user = auth()->user();
+        if ($user->role !== 'admin') {
+            $doctor = $user->doctor;
+            if (!$doctor || $surgery->main_surgeon_id !== $doctor->id) {
+                return response()->json([
+                    'message' => 'No tienes permisos para ver esta cirugía'
+                ], 403);
+            }
+        }
+        
+        $surgery->load(['patient', 'mainSurgeon']);
 
         return response()->json($surgery);
     }
@@ -107,38 +136,60 @@ class SurgeryController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Surgery $surgery)
+    public function update(Request $request, $id): JsonResponse
     {
+        $surgery = Surgery::findOrFail($id);
+        
+        // Check if user can update this surgery
+        $user = auth()->user();
+        if ($user->role !== 'admin') {
+            $doctor = $user->doctor;
+            if (!$doctor || $surgery->main_surgeon_id !== $doctor->id) {
+                return response()->json([
+                    'message' => 'No tienes permisos para editar esta cirugía'
+                ], 403);
+            }
+            // Non-admin users cannot change main_surgeon_id
+            $request->request->remove('main_surgeon_id');
+        }
+        
         $request->validate([
             'patient_id' => 'sometimes|exists:patients,id',
             'main_surgeon_id' => 'sometimes|exists:doctors,id',
-            'clinic_id' => 'sometimes|exists:clinics,id',
             'surgery_type' => 'sometimes|string|max:255',
-            'surgery_date' => 'sometimes|date',
+            'date_time' => 'sometimes|date',
             'estimated_duration' => 'sometimes|integer|min:30|max:720',
-            'actual_duration' => 'nullable|integer|min:1',
             'operating_room' => 'sometimes|string|max:50',
             'anesthesia_type' => 'sometimes|string|max:100',
-            'pre_operative_notes' => 'nullable|string',
-            'post_operative_notes' => 'nullable|string',
-            'complications' => 'nullable|string',
-            'outcome' => 'nullable|string',
-            'urgency_level' => 'sometimes|in:elective,urgent,emergency',
+            'preop_notes' => 'nullable|string',
             'status' => 'sometimes|in:scheduled,in_progress,completed,cancelled,postponed',
             'assistant_surgeons' => 'nullable|array',
-            'assistant_surgeons.*' => 'exists:doctors,id',
+            'required_equipment' => 'nullable|array',
         ]);
 
         $surgery->update($request->all());
 
-        return response()->json($surgery->load(['patient', 'mainSurgeon', 'clinic']));
+        return response()->json($surgery->load(['patient', 'mainSurgeon']));
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Surgery $surgery)
+    public function destroy($id): JsonResponse
     {
+        $surgery = Surgery::findOrFail($id);
+        
+        // Check if user can delete this surgery
+        $user = auth()->user();
+        if ($user->role !== 'admin') {
+            $doctor = $user->doctor;
+            if (!$doctor || $surgery->main_surgeon_id !== $doctor->id) {
+                return response()->json([
+                    'message' => 'No tienes permisos para eliminar esta cirugía'
+                ], 403);
+            }
+        }
+        
         $surgery->delete();
 
         return response()->json(['message' => 'Surgery deleted successfully']);
@@ -149,20 +200,26 @@ class SurgeryController extends Controller
      */
     public function today(Request $request)
     {
-        $query = Surgery::with(['patient', 'mainSurgeon', 'clinic'])
-            ->whereDate('surgery_date', today());
-
-        // Filter by clinic if specified
-        if ($request->has('clinic_id')) {
-            $query->where('clinic_id', $request->clinic_id);
+        $query = Surgery::with(['patient', 'mainSurgeon'])
+            ->whereDate('date_time', today());
+            
+        // If user is not admin, only show their own surgeries
+        $user = auth()->user();
+        if ($user->role !== 'admin') {
+            $doctor = $user->doctor;
+            if ($doctor) {
+                $query->where('main_surgeon_id', $doctor->id);
+            } else {
+                $query->where('id', -1); // Return empty result
+            }
         }
 
-        // Filter by surgeon if specified
-        if ($request->has('surgeon_id')) {
+        // Filter by surgeon if specified (only for admin)
+        if ($request->has('surgeon_id') && $user->role === 'admin') {
             $query->where('main_surgeon_id', $request->surgeon_id);
         }
 
-        $surgeries = $query->orderBy('surgery_date')
+        $surgeries = $query->orderBy('date_time')
             ->get();
 
         return response()->json($surgeries);
@@ -175,14 +232,61 @@ class SurgeryController extends Controller
     {
         $request->validate([
             'status' => 'required|in:scheduled,in_progress,completed,cancelled,postponed',
-            'notes' => 'nullable|string',
         ]);
 
-        $surgery->update([
-            'status' => $request->status,
-            'post_operative_notes' => $request->notes ?? $surgery->post_operative_notes,
-        ]);
+        $surgery->update(['status' => $request->status]);
 
-        return response()->json($surgery->load(['patient', 'mainSurgeon', 'clinic']));
+        return response()->json($surgery->load(['patient', 'mainSurgeon']));
+    }
+
+    /**
+     * Get surgery statistics.
+     */
+    public function stats(): JsonResponse
+    {
+        $user = auth()->user();
+        
+        if ($user->role === 'admin') {
+            // Admin sees all surgeries
+            $stats = [
+                'total' => Surgery::count(),
+                'scheduled' => Surgery::where('status', 'scheduled')->count(),
+                'in_progress' => Surgery::where('status', 'in_progress')->count(),
+                'completed' => Surgery::where('status', 'completed')->count(),
+                'cancelled' => Surgery::where('status', 'cancelled')->count(),
+                'today' => Surgery::whereDate('date_time', today())->count(),
+                'this_week' => Surgery::whereBetween('date_time', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+                'this_month' => Surgery::whereMonth('date_time', now()->month)->count(),
+            ];
+        } else {
+            // Non-admin users see only their surgeries as main surgeon
+            $doctor = $user->doctor;
+            
+            if (!$doctor) {
+                $stats = [
+                    'total' => 0,
+                    'scheduled' => 0,
+                    'in_progress' => 0,
+                    'completed' => 0,
+                    'cancelled' => 0,
+                    'today' => 0,
+                    'this_week' => 0,
+                    'this_month' => 0,
+                ];
+            } else {
+                $stats = [
+                    'total' => Surgery::where('main_surgeon_id', $doctor->id)->count(),
+                    'scheduled' => Surgery::where('main_surgeon_id', $doctor->id)->where('status', 'scheduled')->count(),
+                    'in_progress' => Surgery::where('main_surgeon_id', $doctor->id)->where('status', 'in_progress')->count(),
+                    'completed' => Surgery::where('main_surgeon_id', $doctor->id)->where('status', 'completed')->count(),
+                    'cancelled' => Surgery::where('main_surgeon_id', $doctor->id)->where('status', 'cancelled')->count(),
+                    'today' => Surgery::where('main_surgeon_id', $doctor->id)->whereDate('date_time', today())->count(),
+                    'this_week' => Surgery::where('main_surgeon_id', $doctor->id)->whereBetween('date_time', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+                    'this_month' => Surgery::where('main_surgeon_id', $doctor->id)->whereMonth('date_time', now()->month)->count(),
+                ];
+            }
+        }
+        
+        return response()->json($stats);
     }
 }

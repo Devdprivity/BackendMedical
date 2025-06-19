@@ -13,6 +13,8 @@ return new class extends Migration
     {
         Schema::create('medications', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->foreignId('clinic_id')->nullable()->constrained('clinics')->onDelete('set null');
             $table->string('commercial_name');
             $table->string('generic_name');
             $table->string('manufacturer');
@@ -38,6 +40,9 @@ return new class extends Migration
             $table->text('drug_interactions')->nullable();
             $table->text('storage_notes')->nullable();
             $table->timestamps();
+            
+            $table->index(['created_by', 'status']);
+            $table->index(['clinic_id', 'status']);
         });
     }
 

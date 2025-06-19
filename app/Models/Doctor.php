@@ -87,6 +87,98 @@ class Doctor extends Model
     }
 
     /**
+     * Get the treatments prescribed by the doctor.
+     */
+    public function treatments()
+    {
+        return $this->hasMany(Treatment::class);
+    }
+
+    /**
+     * Get active treatments prescribed by the doctor.
+     */
+    public function activeTreatments()
+    {
+        return $this->treatments()->active();
+    }
+
+    /**
+     * Get current treatments prescribed by the doctor.
+     */
+    public function currentTreatments()
+    {
+        return $this->treatments()->current();
+    }
+
+    /**
+     * Get doctor-patient relationships.
+     */
+    public function patientRelationships()
+    {
+        return $this->hasMany(DoctorPatientRelationship::class);
+    }
+
+    /**
+     * Get active patient relationships.
+     */
+    public function activePatientRelationships()
+    {
+        return $this->patientRelationships()->active()->current();
+    }
+
+    /**
+     * Get all patients associated with this doctor.
+     */
+    public function patients()
+    {
+        return $this->belongsToMany(Patient::class, 'doctor_patient_relationships')
+                    ->withPivot([
+                        'relationship_type',
+                        'started_at',
+                        'ended_at',
+                        'status',
+                        'notes',
+                        'permissions'
+                    ])
+                    ->wherePivot('status', 'active')
+                    ->withTimestamps();
+    }
+
+    /**
+     * Get primary patients (where doctor is primary care physician).
+     */
+    public function primaryPatients()
+    {
+        return $this->patients()->wherePivot('relationship_type', 'primary');
+    }
+
+    /**
+     * Check if doctor can treat specific patient.
+     */
+    public function canTreatPatient($patientId)
+    {
+        return $this->patientRelationships()
+                    ->where('patient_id', $patientId)
+                    ->active()
+                    ->current()
+                    ->exists();
+    }
+
+    /**
+     * Check if doctor has specific permission for patient.
+     */
+    public function hasPatientPermission($patientId, $permission)
+    {
+        $relationship = $this->patientRelationships()
+                             ->where('patient_id', $patientId)
+                             ->active()
+                             ->current()
+                             ->first();
+        
+        return $relationship && $relationship->hasPermission($permission);
+    }
+
+    /**
      * Check if doctor is active
      */
     public function isActive()

@@ -92,6 +92,77 @@ class Patient extends Model
     }
 
     /**
+     * Get the treatments for the patient.
+     */
+    public function treatments()
+    {
+        return $this->hasMany(Treatment::class);
+    }
+
+    /**
+     * Get active treatments for the patient.
+     */
+    public function activeTreatments()
+    {
+        return $this->treatments()->active();
+    }
+
+    /**
+     * Get current treatments (within date range).
+     */
+    public function currentTreatments()
+    {
+        return $this->treatments()->current();
+    }
+
+    /**
+     * Get doctor-patient relationships.
+     */
+    public function doctorRelationships()
+    {
+        return $this->hasMany(DoctorPatientRelationship::class);
+    }
+
+    /**
+     * Get active doctor relationships.
+     */
+    public function activeDoctorRelationships()
+    {
+        return $this->doctorRelationships()->active()->current();
+    }
+
+    /**
+     * Get primary doctor.
+     */
+    public function primaryDoctor()
+    {
+        return $this->doctorRelationships()
+                    ->active()
+                    ->current()
+                    ->primary()
+                    ->with('doctor')
+                    ->first()?->doctor;
+    }
+
+    /**
+     * Get all doctors associated with this patient.
+     */
+    public function doctors()
+    {
+        return $this->belongsToMany(Doctor::class, 'doctor_patient_relationships')
+                    ->withPivot([
+                        'relationship_type',
+                        'started_at',
+                        'ended_at',
+                        'status',
+                        'notes',
+                        'permissions'
+                    ])
+                    ->wherePivot('status', 'active')
+                    ->withTimestamps();
+    }
+
+    /**
      * Calculate the patient's age
      */
     public function getAgeAttribute()

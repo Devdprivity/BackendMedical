@@ -12,7 +12,18 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Replace default CSRF middleware with custom one
+        $middleware->replace(
+            \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+            \App\Http\Middleware\VerifyCsrfToken::class
+        );
+        
+        $middleware->alias([
+            'role' => \App\Http\Middleware\CheckRole::class,
+            'subscription.limits' => \App\Http\Middleware\CheckSubscriptionLimits::class,
+            'subscription.feature' => \App\Http\Middleware\CheckSubscriptionFeature::class,
+            'filter.user.data' => \App\Http\Middleware\FilterUserData::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

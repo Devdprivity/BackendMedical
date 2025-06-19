@@ -15,6 +15,21 @@ class ClinicController extends Controller
     public function index(Request $request)
     {
         $query = Clinic::query();
+        
+        // Non-admin users see limited clinic data
+        $user = auth()->user();
+        if ($user->role !== 'admin') {
+            // Non-admin users might see only their assigned clinic(s)
+            $doctor = $user->doctor;
+            if ($doctor && $doctor->clinics()->exists()) {
+                // Show only clinics where this doctor works
+                $clinicIds = $doctor->clinics()->pluck('clinics.id');
+                $query->whereIn('id', $clinicIds);
+            } else {
+                // If no clinic assignment, show no clinics
+                $query->where('id', -1);
+            }
+        }
 
         // Filter by status
         if ($request->has('status')) {
@@ -29,17 +44,22 @@ class ClinicController extends Controller
         $clinics = $query->withCount(['doctors', 'patients', 'appointments'])
             ->paginate($request->get('per_page', 15));
 
-        // Add monthly statistics
-        $clinics->getCollection()->transform(function ($clinic) {
+        // Add monthly statistics (filtered by user permissions)
+        $clinics->getCollection()->transform(function ($clinic) use ($user) {
             $clinic->monthly_appointments = $clinic->appointments()
                 ->whereMonth('date_time', now()->month)
                 ->count();
             
-            $clinic->monthly_income = $clinic->appointments()
-                ->whereMonth('date_time', now()->month)
-                ->join('invoices', 'appointments.patient_id', '=', 'invoices.patient_id')
-                ->where('invoices.payment_status', 'paid')
-                ->sum('invoices.total');
+            // Only show financial data to admin
+            if ($user->role === 'admin') {
+                $clinic->monthly_income = $clinic->appointments()
+                    ->whereMonth('date_time', now()->month)
+                    ->join('invoices', 'appointments.patient_id', '=', 'invoices.patient_id')
+                    ->where('invoices.payment_status', 'paid')
+                    ->sum('invoices.total');
+            } else {
+                $clinic->monthly_income = 0; // Hidden for non-admin
+            }
                 
             return $clinic;
         });
@@ -178,6 +198,61 @@ class ClinicController extends Controller
             ->paginate(15);
 
         return response()->json($appointments);
+    }
+
+    /**
+     * Get clinic statistics.
+     */
+    public function stats()
+    {
+        $user = auth()->user();
+        
+        if ($user->role === 'admin') {
+            // Admin sees all clinic stats
+            $stats = [
+                'total_clinics' => Clinic::count(),
+                'active_clinics' => Clinic::where('status', 'active')->count(),
+                'inactive_clinics' => Clinic::where('status', 'inactive')->count(),
+                'maintenance_clinics' => Clinic::where('status', 'maintenance')->count(),
+                'total_beds' => Clinic::sum('total_beds'),
+                'occupied_beds' => Clinic::sum('occupied_beds'),
+                'emergency_services' => Clinic::where('emergency_services', true)->count(),
+                'monthly_appointments' => Clinic::withCount(['appointments' => function($query) {
+                    $query->whereMonth('date_time', now()->month);
+                }])->get()->sum('appointments_count'),
+            ];
+        } else {
+            // Non-admin users see stats only for their assigned clinics
+            $doctor = $user->doctor;
+            
+            if (!$doctor || !$doctor->clinics()->exists()) {
+                $stats = [
+                    'total_clinics' => 0,
+                    'active_clinics' => 0,
+                    'inactive_clinics' => 0,
+                    'maintenance_clinics' => 0,
+                    'total_beds' => 0,
+                    'occupied_beds' => 0,
+                    'emergency_services' => 0,
+                    'monthly_appointments' => 0,
+                ];
+            } else {
+                $clinicIds = $doctor->clinics()->pluck('clinics.id');
+                
+                $stats = [
+                    'total_clinics' => Clinic::whereIn('id', $clinicIds)->count(),
+                    'active_clinics' => Clinic::whereIn('id', $clinicIds)->where('status', 'active')->count(),
+                    'inactive_clinics' => Clinic::whereIn('id', $clinicIds)->where('status', 'inactive')->count(),
+                    'maintenance_clinics' => Clinic::whereIn('id', $clinicIds)->where('status', 'maintenance')->count(),
+                    'total_beds' => Clinic::whereIn('id', $clinicIds)->sum('total_beds'),
+                    'occupied_beds' => Clinic::whereIn('id', $clinicIds)->sum('occupied_beds'),
+                    'emergency_services' => Clinic::whereIn('id', $clinicIds)->where('emergency_services', true)->count(),
+                    'monthly_appointments' => 0, // Calculated separately for security
+                ];
+            }
+        }
+        
+        return response()->json($stats);
     }
 
     private function calculateOccupancyRate(Clinic $clinic)

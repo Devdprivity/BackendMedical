@@ -25,6 +25,21 @@ class User extends Authenticatable
         'role',
         'status',
         'last_login',
+        'google_id',
+        'avatar',
+        'booking_slug',
+        'booking_enabled',
+        'consultation_fee',
+        'consultation_duration',
+        'schedule_start',
+        'schedule_end',
+        'work_days',
+        'break_start',
+        'break_end',
+        'bio',
+        'specialty',
+        'clinic_id',
+        'location_id',
     ];
 
     /**
@@ -60,6 +75,129 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's subscriptions.
+     */
+    public function subscriptions()
+    {
+        return $this->hasMany(UserSubscription::class);
+    }
+
+    /**
+     * Get the user's current subscription.
+     */
+    public function currentSubscription()
+    {
+        return $this->hasOne(UserSubscription::class)
+                    ->where(function($query) {
+                        $query->where('status', 'active')
+                              ->orWhere('status', 'trial');
+                    })
+                    ->where('ends_at', '>', now())
+                    ->latest();
+    }
+
+    /**
+     * Get the user's active subscription.
+     */
+    public function activeSubscription()
+    {
+        return $this->hasOne(UserSubscription::class)
+                    ->where('status', 'active')
+                    ->where('ends_at', '>', now());
+    }
+
+    /**
+     * Get the user's trial subscription.
+     */
+    public function trialSubscription()
+    {
+        return $this->hasOne(UserSubscription::class)
+                    ->where('status', 'trial')
+                    ->where('trial_ends_at', '>', now());
+    }
+
+    /**
+     * Check if user has an active subscription.
+     */
+    public function hasActiveSubscription(): bool
+    {
+        return $this->currentSubscription()->exists();
+    }
+
+    /**
+     * Check if user is on trial.
+     */
+    public function isOnTrial(): bool
+    {
+        return $this->trialSubscription()->exists();
+    }
+
+    /**
+     * Check if user can access a feature.
+     */
+    public function canAccessFeature(string $feature): bool
+    {
+        $subscription = $this->currentSubscription;
+        
+        if (!$subscription) {
+            return false;
+        }
+
+        return $subscription->plan->hasFeature($feature);
+    }
+
+    /**
+     * Check if user can perform an action based on limits.
+     */
+    public function canPerformAction(string $action): bool
+    {
+        $subscription = $this->currentSubscription;
+        
+        if (!$subscription) {
+            return false;
+        }
+
+        switch ($action) {
+            case 'add_doctor':
+                return $subscription->canAddDoctor();
+            case 'add_patient':
+                return $subscription->canAddPatient();
+            case 'add_appointment':
+                return $subscription->canAddAppointment();
+            case 'add_staff':
+                return $subscription->canAddStaff();
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Get user's subscription status.
+     */
+    public function getSubscriptionStatusAttribute(): string
+    {
+        $subscription = $this->currentSubscription;
+        
+        if (!$subscription) {
+            return 'none';
+        }
+
+        if ($subscription->isTrial()) {
+            return 'trial';
+        }
+
+        if ($subscription->isActive()) {
+            return 'active';
+        }
+
+        if ($subscription->isExpired()) {
+            return 'expired';
+        }
+
+        return 'cancelled';
+    }
+
+    /**
      * Check if user has a specific role
      */
     public function hasRole($role)
@@ -73,5 +211,13 @@ class User extends Authenticatable
     public function isActive()
     {
         return $this->status === 'active';
+    }
+
+    /**
+     * Check if user registered with Google.
+     */
+    public function isGoogleUser(): bool
+    {
+        return !empty($this->google_id);
     }
 }

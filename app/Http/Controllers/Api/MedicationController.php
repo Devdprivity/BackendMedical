@@ -4,43 +4,57 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Medication;
-use App\Models\MedicationMovement;
+use App\Traits\FiltersUserData;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class MedicationController extends Controller
 {
+    use FiltersUserData;
+
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
-        $query = Medication::query();
+        // Check if user can access medications
+        if (!$this->canUserAccess('view', 'medications')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes permisos para ver medicamentos'
+            ], 403);
+        }
 
-        // Filter by category
+        $query = Medication::query();
+        
+        // Apply user-specific filters
+        $query = $this->applyUserFilters($query, $request, 'medications');
+        
+        // Apply subscription limits
+        $query = $this->applySubscriptionLimits($query, 'medications');
+
+        // Additional filters
         if ($request->has('category')) {
             $query->where('category', 'like', '%' . $request->category . '%');
         }
 
-        // Filter by manufacturer
         if ($request->has('manufacturer')) {
             $query->where('manufacturer', 'like', '%' . $request->manufacturer . '%');
         }
 
-        // Search by name or active ingredient
         if ($request->has('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%')
-                  ->orWhere('active_ingredient', 'like', '%' . $search . '%')
+                $q->where('commercial_name', 'like', '%' . $search . '%')
+                  ->orWhere('generic_name', 'like', '%' . $search . '%')
                   ->orWhere('barcode', 'like', '%' . $search . '%');
             });
         }
 
-        // Filter by stock status
         if ($request->has('stock_status')) {
             switch ($request->stock_status) {
                 case 'low':
-                    $query->whereColumn('current_stock', '<=', 'minimum_stock');
+                    $query->whereColumn('current_stock', '<=', 'min_stock');
                     break;
                 case 'out':
                     $query->where('current_stock', 0);
@@ -51,199 +65,351 @@ class MedicationController extends Controller
             }
         }
 
-        $medications = $query->orderBy('name')
+        $medications = $query->orderBy('commercial_name')
             ->paginate($request->get('per_page', 15));
 
-        return response()->json($medications);
+        // Hide sensitive data based on user role
+        $this->hideSensitiveData($medications->items());
+
+        return response()->json([
+            'success' => true,
+            'data' => $medications,
+            'current_page' => $medications->currentPage(),
+            'last_page' => $medications->lastPage(),
+            'per_page' => $medications->perPage(),
+            'total' => $medications->total(),
+            'user_role' => auth()->user()->role
+        ]);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
+        // Check if user can create medications
+        if (!$this->canUserAccess('create', 'medications')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes permisos para crear medicamentos'
+            ], 403);
+        }
+
         $request->validate([
-            'name' => 'required|string|max:255',
-            'active_ingredient' => 'required|string|max:255',
-            'dosage' => 'required|string|max:100',
-            'form' => 'required|string|max:100',
+            'commercial_name' => 'required|string|max:255',
+            'generic_name' => 'required|string|max:255',
+            'concentration' => 'required|string|max:100',
+            'presentation' => 'required|string|max:100',
             'manufacturer' => 'required|string|max:255',
             'category' => 'required|string|max:100',
             'barcode' => 'nullable|string|unique:medications',
-            'description' => 'nullable|string',
+            'administration_route' => 'required|string|max:100',
+            'indications' => 'nullable|string',
             'contraindications' => 'nullable|string',
             'side_effects' => 'nullable|string',
-            'storage_conditions' => 'nullable|string',
-            'unit_price' => 'required|numeric|min:0',
+            'storage_notes' => 'nullable|string',
+            'unit_cost' => 'required|numeric|min:0',
+            'sale_price' => 'required|numeric|min:0',
             'current_stock' => 'required|integer|min:0',
-            'minimum_stock' => 'required|integer|min:0',
+            'min_stock' => 'required|integer|min:0',
+            'max_stock' => 'required|integer|min:0',
             'expiration_date' => 'required|date|after:today',
             'requires_prescription' => 'boolean',
+            'controlled' => 'boolean',
         ]);
 
-        $medication = Medication::create($request->all());
+        $medicationData = $request->all();
+        
+        // Assign creator and clinic
+        $medicationData['created_by'] = auth()->id();
+        $medicationData['clinic_id'] = auth()->user()->clinic_id;
 
-        // Create initial stock movement
-        if ($medication->current_stock > 0) {
-            MedicationMovement::create([
-                'medication_id' => $medication->id,
-                'movement_type' => 'in',
-                'quantity' => $medication->current_stock,
-                'reason' => 'Initial stock',
-                'movement_date' => now(),
-            ]);
-        }
+        $medication = Medication::create($medicationData);
 
-        return response()->json($medication, 201);
+        return response()->json([
+            'success' => true,
+            'message' => 'Medicamento creado exitosamente',
+            'data' => $medication
+        ], 201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Medication $medication)
+    public function show(Medication $medication): JsonResponse
     {
-        $medication->load(['movements' => function ($query) {
-            $query->orderBy('movement_date', 'desc')->limit(10);
-        }]);
+        // Check if user can access this medication
+        if (!$this->canUserAccessMedication($medication)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes permisos para ver este medicamento'
+            ], 403);
+        }
 
-        return response()->json($medication);
+        // Hide sensitive data based on user role
+        $this->hideSensitiveData([$medication]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $medication
+        ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Medication $medication)
+    public function update(Request $request, Medication $medication): JsonResponse
     {
+        // Check if user can update medications
+        if (!$this->canUserAccess('update', 'medications')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes permisos para actualizar medicamentos'
+            ], 403);
+        }
+
         $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'active_ingredient' => 'sometimes|string|max:255',
-            'dosage' => 'sometimes|string|max:100',
-            'form' => 'sometimes|string|max:100',
+            'commercial_name' => 'sometimes|string|max:255',
+            'generic_name' => 'sometimes|string|max:255',
+            'concentration' => 'sometimes|string|max:100',
+            'presentation' => 'sometimes|string|max:100',
             'manufacturer' => 'sometimes|string|max:255',
             'category' => 'sometimes|string|max:100',
             'barcode' => 'nullable|string|unique:medications,barcode,' . $medication->id,
-            'description' => 'nullable|string',
+            'administration_route' => 'sometimes|string|max:100',
+            'indications' => 'nullable|string',
             'contraindications' => 'nullable|string',
             'side_effects' => 'nullable|string',
-            'storage_conditions' => 'nullable|string',
-            'unit_price' => 'sometimes|numeric|min:0',
-            'minimum_stock' => 'sometimes|integer|min:0',
+            'storage_notes' => 'nullable|string',
+            'unit_cost' => 'sometimes|numeric|min:0',
+            'sale_price' => 'sometimes|numeric|min:0',
+            'min_stock' => 'sometimes|integer|min:0',
+            'max_stock' => 'sometimes|integer|min:0',
             'expiration_date' => 'sometimes|date',
             'requires_prescription' => 'boolean',
+            'controlled' => 'boolean',
         ]);
 
         // Don't allow direct stock updates through this endpoint
         $updateData = $request->except(['current_stock']);
         $medication->update($updateData);
 
-        return response()->json($medication);
+        return response()->json([
+            'success' => true,
+            'message' => 'Medicamento actualizado exitosamente'
+        ]);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Medication $medication)
+    public function destroy(Medication $medication): JsonResponse
     {
+        // Check if user can delete medications
+        if (!$this->canUserAccess('delete', 'medications')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes permisos para eliminar medicamentos'
+            ], 403);
+        }
+
         $medication->delete();
 
-        return response()->json(['message' => 'Medication deleted successfully']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Medicamento eliminado exitosamente'
+        ]);
     }
 
     /**
      * Get medications with low stock.
      */
-    public function lowStock(Request $request)
+    public function lowStock(Request $request): JsonResponse
     {
-        $query = Medication::whereColumn('current_stock', '<=', 'minimum_stock');
-
-        // Filter by clinic if specified
-        if ($request->has('clinic_id')) {
-            $query->where('clinic_id', $request->clinic_id);
+        // Check if user can access medications
+        if (!$this->canUserAccess('view', 'medications')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes permisos para ver stock de medicamentos'
+            ], 403);
         }
+
+        $query = Medication::whereColumn('current_stock', '<=', 'min_stock');
+        
+        // Apply user-specific filters
+        $query = $this->applyUserFilters($query, $request, 'medications');
 
         $lowStockMedications = $query->orderBy('current_stock')
             ->paginate($request->get('per_page', 15));
 
-        return response()->json($lowStockMedications);
+        // Hide sensitive data based on user role
+        $this->hideSensitiveData($lowStockMedications->items());
+
+        return response()->json([
+            'success' => true,
+            'data' => $lowStockMedications,
+            'user_role' => auth()->user()->role
+        ]);
     }
 
     /**
      * Get medications expiring soon.
      */
-    public function expiring(Request $request)
+    public function expiring(Request $request): JsonResponse
     {
+        // Check if user can access medications
+        if (!$this->canUserAccess('view', 'medications')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes permisos para ver medicamentos'
+            ], 403);
+        }
+
         $days = $request->get('days', 30);
+        $query = Medication::whereDate('expiration_date', '<=', now()->addDays($days));
         
-        $query = Medication::where('expiration_date', '<=', now()->addDays($days))
-            ->where('expiration_date', '>', now());
+        // Apply user-specific filters
+        $query = $this->applyUserFilters($query, $request, 'medications');
 
         $expiringMedications = $query->orderBy('expiration_date')
             ->paginate($request->get('per_page', 15));
 
-        return response()->json($expiringMedications);
+        // Hide sensitive data based on user role
+        $this->hideSensitiveData($expiringMedications->items());
+
+        return response()->json([
+            'success' => true,
+            'data' => $expiringMedications,
+            'user_role' => auth()->user()->role
+        ]);
     }
 
     /**
-     * Add stock movement.
+     * Update medication stock.
      */
-    public function addMovement(Request $request, Medication $medication)
+    public function updateStock(Request $request, Medication $medication): JsonResponse
     {
-        $request->validate([
-            'movement_type' => 'required|in:in,out',
-            'quantity' => 'required|integer|min:1',
-            'reason' => 'required|string',
-            'movement_date' => 'required|date',
-        ]);
-
-        // Check if there's enough stock for outgoing movements
-        if ($request->movement_type === 'out' && $medication->current_stock < $request->quantity) {
+        // Only admin can update stock directly
+        if (auth()->user()->role !== 'admin') {
             return response()->json([
-                'message' => 'Insufficient stock'
-            ], 400);
+                'success' => false,
+                'message' => 'Solo el administrador puede actualizar el stock directamente'
+            ], 403);
         }
 
-        $movement = MedicationMovement::create([
-            'medication_id' => $medication->id,
-            'movement_type' => $request->movement_type,
-            'quantity' => $request->quantity,
-            'reason' => $request->reason,
-            'movement_date' => $request->movement_date,
+        $request->validate([
+            'current_stock' => 'required|integer|min:0',
+            'reason' => 'required|string|max:255',
         ]);
 
-        // Update medication stock
-        if ($request->movement_type === 'in') {
-            $medication->increment('current_stock', $request->quantity);
-        } else {
-            $medication->decrement('current_stock', $request->quantity);
-        }
+        $oldStock = $medication->current_stock;
+        $medication->update(['current_stock' => $request->current_stock]);
 
-        return response()->json($movement, 201);
+        // Log the stock change (you might want to create a stock_movements table)
+        \Log::info("Stock updated for medication {$medication->id}: {$oldStock} -> {$request->current_stock}. Reason: {$request->reason}");
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Stock actualizado exitosamente',
+            'old_stock' => $oldStock,
+            'new_stock' => $request->current_stock
+        ]);
     }
 
     /**
-     * Get stock movements for a medication.
+     * Get medication statistics.
      */
-    public function movements(Request $request, Medication $medication)
+    public function stats(): JsonResponse
     {
-        $query = $medication->movements();
+        $user = auth()->user();
+        $query = Medication::query();
+        
+        // Apply user-specific filters
+        $query = $this->applyUserFilters($query, request(), 'medications');
+        
+        $stats = [
+            'total_medications' => $query->count(),
+            'available_medications' => (clone $query)->where('current_stock', '>', 0)->count(),
+            'out_of_stock' => (clone $query)->where('current_stock', 0)->count(),
+            'low_stock' => (clone $query)->whereColumn('current_stock', '<=', 'min_stock')->count(),
+            'expiring_soon' => (clone $query)->whereDate('expiration_date', '<=', now()->addDays(30))->count(),
+            'controlled_substances' => (clone $query)->where('controlled', true)->count(),
+            'prescription_required' => (clone $query)->where('requires_prescription', true)->count(),
+        ];
 
-        // Filter by movement type
-        if ($request->has('movement_type')) {
-            $query->where('movement_type', $request->movement_type);
+        // Add financial data only for admin
+        if ($user->role === 'admin') {
+            $stats['total_inventory_value'] = $query->sum(\DB::raw('current_stock * unit_cost'));
+            $stats['potential_revenue'] = $query->sum(\DB::raw('current_stock * sale_price'));
+        } else {
+            $stats['total_inventory_value'] = 0; // Hidden
+            $stats['potential_revenue'] = 0; // Hidden
         }
 
-        // Filter by date range
-        if ($request->has('from_date')) {
-            $query->whereDate('movement_date', '>=', $request->from_date);
+        // Add role-specific information
+        $stats['user_role'] = $user->role;
+        $stats['is_admin'] = $user->role === 'admin';
+        $stats['can_see_financial_data'] = $user->role === 'admin';
+
+        return response()->json($stats);
+    }
+
+    /**
+     * Check if current user can access specific medication
+     */
+    private function canUserAccessMedication(Medication $medication): bool
+    {
+        $user = auth()->user();
+        
+        // Admin can access all medications
+        if ($user->role === 'admin') {
+            return true;
         }
-
-        if ($request->has('to_date')) {
-            $query->whereDate('movement_date', '<=', $request->to_date);
+        
+        // Apply role-specific access checks
+        switch ($user->role) {
+            case 'doctor':
+            case 'nurse':
+                // Medical staff can access all medications for medical purposes
+                return true;
+                
+            default:
+                // Other roles have limited access
+                return $medication->current_stock > 0; // Only available medications
         }
+    }
 
-        $movements = $query->orderBy('movement_date', 'desc')
-            ->paginate($request->get('per_page', 15));
-
-        return response()->json($movements);
+    /**
+     * Hide sensitive data based on user role
+     */
+    private function hideSensitiveData(array $medications): void
+    {
+        $user = auth()->user();
+        
+        // Admin sees everything
+        if ($user->role === 'admin') {
+            return;
+        }
+        
+        foreach ($medications as $medication) {
+            // Hide financial data for non-admin users
+            $medication->makeHidden(['unit_cost', 'sale_price']);
+            
+            // Additional restrictions by role
+            switch ($user->role) {
+                case 'doctor':
+                case 'nurse':
+                    // Medical staff can see medical information but not financial
+                    break;
+                    
+                default:
+                    // Other roles see very limited information
+                    $medication->makeHidden([
+                        'unit_cost', 'sale_price', 'current_stock', 
+                        'min_stock', 'max_stock', 'storage_notes'
+                    ]);
+                    break;
+            }
+        }
     }
 }

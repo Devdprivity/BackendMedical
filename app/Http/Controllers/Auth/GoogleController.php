@@ -1,0 +1,244 @@
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Models\SubscriptionPlan;
+use App\Models\UserSubscription;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Laravel\Socialite\Facades\Socialite;
+use Carbon\Carbon;
+
+class GoogleController extends Controller
+{
+    /**
+     * Redirect to Google OAuth.
+     */
+    public function redirect()
+    {
+        return Socialite::driver('google')->redirect();
+    }
+
+    /**
+     * Handle Google OAuth callback.
+     */
+    public function callback()
+    {
+        try {
+            $googleUser = Socialite::driver('google')->user();
+            
+            // Check if user already exists with this Google ID
+            $user = User::where('google_id', $googleUser->getId())->first();
+            
+            if ($user) {
+                // User exists, log them in
+                Auth::login($user);
+                $user->update(['last_login' => now()]);
+                
+                return redirect()->route('dashboard')->with('success', '¡Bienvenido de vuelta!');
+            }
+            
+            // Check if user exists with same email
+            $existingUser = User::where('email', $googleUser->getEmail())->first();
+            
+            if ($existingUser) {
+                // Link Google account to existing user
+                $existingUser->update([
+                    'google_id' => $googleUser->getId(),
+                    'avatar' => $googleUser->getAvatar(),
+                    'last_login' => now(),
+                ]);
+                
+                Auth::login($existingUser);
+                
+                return redirect()->route('dashboard')->with('success', '¡Cuenta de Google vinculada exitosamente!');
+            }
+            
+            // Create new user
+            $user = User::create([
+                'name' => $googleUser->getName(),
+                'email' => $googleUser->getEmail(),
+                'google_id' => $googleUser->getId(),
+                'avatar' => $googleUser->getAvatar(),
+                'email_verified_at' => now(),
+                'role' => 'doctor', // Default role for new registrations (not admin)
+                'status' => 'active',
+                'last_login' => now(),
+            ]);
+            
+            // Assign free trial subscription
+            $this->assignFreeTrial($user);
+            
+            Auth::login($user);
+            
+            return redirect()->route('dashboard')->with('success', '¡Cuenta creada exitosamente! Tu prueba gratuita de 7 días ha comenzado.');
+            
+        } catch (\Exception $e) {
+            \Log::error('Google OAuth Error: ' . $e->getMessage());
+            
+            return redirect()->route('login.view')->with('error', 'Error al autenticar con Google. Por favor, intenta de nuevo.');
+        }
+    }
+
+    /**
+     * Assign free trial subscription to new user.
+     */
+    private function assignFreeTrial(User $user)
+    {
+        $freePlan = SubscriptionPlan::where('slug', 'free')->first();
+        
+        if (!$freePlan) {
+            \Log::error('Free plan not found when assigning trial to user: ' . $user->id);
+            return;
+        }
+        
+        $trialEndDate = now()->addDays($freePlan->trial_days);
+        
+        UserSubscription::create([
+            'user_id' => $user->id,
+            'subscription_plan_id' => $freePlan->id,
+            'status' => 'trial',
+            'starts_at' => now(),
+            'ends_at' => $trialEndDate,
+            'trial_ends_at' => $trialEndDate,
+            'billing_cycle' => 'monthly',
+            'current_doctors_count' => 0,
+            'current_patients_count' => 0,
+            'current_appointments_this_month' => 0,
+            'current_locations_count' => 0,
+            'current_staff_count' => 1, // The user themselves
+            'last_monthly_reset' => now()->startOfMonth(),
+        ]);
+        
+        \Log::info('Free trial assigned to user: ' . $user->id . ' - Trial ends: ' . $trialEndDate);
+    }
+
+    /**
+     * Handle manual registration (non-Google).
+     */
+    public function register(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => 'doctor', // Default role for new registrations (not admin)
+            'status' => 'active',
+            'email_verified_at' => now(),
+            'last_login' => now(),
+        ]);
+
+        // Assign free trial
+        $this->assignFreeTrial($user);
+
+        Auth::login($user);
+
+        return response()->json([
+            'message' => 'Cuenta creada exitosamente',
+            'user' => $user,
+            'trial_days' => 7,
+        ]);
+    }
+
+    /**
+     * Get subscription plans for pricing page.
+     */
+    public function getPlans()
+    {
+        $plans = SubscriptionPlan::active()->ordered()->get();
+        
+        return response()->json($plans);
+    }
+
+    /**
+     * Check user's subscription status.
+     */
+    public function subscriptionStatus()
+    {
+        $user = Auth::user();
+        $subscription = $user->currentSubscription;
+        
+        if (!$subscription) {
+            return response()->json([
+                'status' => 'none',
+                'message' => 'No tienes una suscripción activa.',
+                'trial_available' => true,
+            ]);
+        }
+        
+        $data = [
+            'status' => $subscription->status,
+            'plan' => $subscription->plan->name,
+            'ends_at' => $subscription->ends_at,
+            'days_remaining' => $subscription->days_remaining,
+        ];
+        
+        if ($subscription->isTrial()) {
+            $data['trial_days_remaining'] = $subscription->trial_days_remaining;
+            $data['message'] = "Tu prueba gratuita termina en {$subscription->trial_days_remaining} días.";
+        } elseif ($subscription->isActive()) {
+            $data['message'] = "Tu suscripción está activa hasta " . $subscription->ends_at->format('d/m/Y');
+        } elseif ($subscription->isExpired()) {
+            $data['message'] = "Tu suscripción ha expirado.";
+        }
+        
+        return response()->json($data);
+    }
+
+    /**
+     * Get user's usage statistics.
+     */
+    public function usageStats()
+    {
+        $user = Auth::user();
+        $subscription = $user->currentSubscription;
+        
+        if (!$subscription) {
+            return response()->json(['error' => 'No subscription found'], 404);
+        }
+        
+        $subscription->resetMonthlyCountersIfNeeded();
+        
+        return response()->json([
+            'plan' => $subscription->plan->name,
+            'limits' => [
+                'doctors' => [
+                    'current' => $subscription->current_doctors_count,
+                    'max' => $subscription->plan->max_doctors,
+                    'unlimited' => is_null($subscription->plan->max_doctors),
+                ],
+                'patients' => [
+                    'current' => $subscription->current_patients_count,
+                    'max' => $subscription->plan->max_patients,
+                    'unlimited' => is_null($subscription->plan->max_patients),
+                ],
+                'appointments' => [
+                    'current' => $subscription->current_appointments_this_month,
+                    'max' => $subscription->plan->max_appointments_per_month,
+                    'unlimited' => is_null($subscription->plan->max_appointments_per_month),
+                    'period' => 'monthly',
+                ],
+                'staff' => [
+                    'current' => $subscription->current_staff_count,
+                    'max' => $subscription->plan->max_staff,
+                    'unlimited' => is_null($subscription->plan->max_staff),
+                ],
+                'locations' => [
+                    'current' => $subscription->current_locations_count,
+                    'max' => $subscription->plan->max_locations,
+                    'unlimited' => is_null($subscription->plan->max_locations),
+                ],
+            ],
+            'features' => $subscription->plan->features,
+        ]);
+    }
+}

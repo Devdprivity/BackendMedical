@@ -51,6 +51,22 @@ class Appointment extends Model
     }
 
     /**
+     * Get the video call associated with this appointment.
+     */
+    public function videoCall()
+    {
+        return $this->hasOne(VideoCall::class);
+    }
+
+    /**
+     * Get the payment associated with this appointment.
+     */
+    public function payment()
+    {
+        return $this->hasOne(AppointmentPayment::class);
+    }
+
+    /**
      * Check if appointment is scheduled
      */
     public function isScheduled()
@@ -72,5 +88,40 @@ class Appointment extends Model
     public function isToday()
     {
         return $this->date_time->isToday();
+    }
+
+    /**
+     * Check if appointment has video call capability
+     */
+    public function hasVideoCall()
+    {
+        return $this->videoCall !== null;
+    }
+
+    /**
+     * Check if video call can be started (appointment is today and within time range)
+     */
+    public function canStartVideoCall()
+    {
+        if (!$this->isScheduled()) {
+            return false;
+        }
+
+        $now = now();
+        $appointmentTime = $this->date_time;
+        
+        // Allow starting 15 minutes before and up to 60 minutes after appointment time
+        $startWindow = $appointmentTime->subMinutes(15);
+        $endWindow = $appointmentTime->addMinutes(60);
+        
+        return $now->between($startWindow, $endWindow);
+    }
+
+    /**
+     * Check if appointment is a video consultation
+     */
+    public function isVideoConsultation()
+    {
+        return $this->type === 'video_consultation' || $this->type === 'online';
     }
 }

@@ -13,7 +13,18 @@ class InvoiceController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Invoice::with(['patient', 'clinic']);
+        $query = Invoice::with(['patient']);
+        
+        // Non-admin users see limited invoice data
+        $user = auth()->user();
+        if ($user->role !== 'admin') {
+            if ($user->role === 'accountant') {
+                // Accountants can see all invoices but with limited access
+            } else {
+                // Other roles should not see invoices - redirect or show empty
+                $query->where('id', -1); // This will return empty result
+            }
+        }
 
         // Filter by payment status
         if ($request->has('payment_status')) {
@@ -22,15 +33,10 @@ class InvoiceController extends Controller
 
         // Filter by date range
         if ($request->has('from_date')) {
-            $query->whereDate('invoice_date', '>=', $request->from_date);
+            $query->whereDate('issue_date', '>=', $request->from_date);
         }
         if ($request->has('to_date')) {
-            $query->whereDate('invoice_date', '<=', $request->to_date);
-        }
-
-        // Filter by clinic
-        if ($request->has('clinic_id')) {
-            $query->where('clinic_id', $request->clinic_id);
+            $query->whereDate('issue_date', '<=', $request->to_date);
         }
 
         // Search by patient name or invoice number
@@ -44,7 +50,7 @@ class InvoiceController extends Controller
             });
         }
 
-        $invoices = $query->orderBy('invoice_date', 'desc')
+        $invoices = $query->orderBy('issue_date', 'desc')
             ->paginate($request->get('per_page', 15));
 
         return response()->json($invoices);
@@ -57,50 +63,43 @@ class InvoiceController extends Controller
     {
         $request->validate([
             'patient_id' => 'required|exists:patients,id',
-            'clinic_id' => 'required|exists:clinics,id',
-            'invoice_date' => 'required|date',
-            'due_date' => 'required|date|after:invoice_date',
-            'services' => 'required|array|min:1',
-            'services.*.description' => 'required|string',
-            'services.*.quantity' => 'required|integer|min:1',
-            'services.*.unit_price' => 'required|numeric|min:0',
-            'tax_rate' => 'nullable|numeric|min:0|max:100',
-            'discount_amount' => 'nullable|numeric|min:0',
+            'issue_date' => 'required|date',
+            'due_date' => 'required|date|after:issue_date',
+            'items' => 'required|array|min:1',
+            'items.*.description' => 'required|string',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.unit_price' => 'required|numeric|min:0',
             'notes' => 'nullable|string',
         ]);
 
         // Calculate totals
         $subtotal = 0;
-        foreach ($request->services as $service) {
-            $subtotal += $service['quantity'] * $service['unit_price'];
+        foreach ($request->items as $item) {
+            $subtotal += $item['quantity'] * $item['unit_price'];
         }
 
-        $discount = $request->discount_amount ?? 0;
-        $taxRate = $request->tax_rate ?? 0;
-        $taxAmount = ($subtotal - $discount) * ($taxRate / 100);
-        $total = $subtotal - $discount + $taxAmount;
+        $taxAmount = $subtotal * 0.19; // 19% tax rate
+        $total = $subtotal + $taxAmount;
 
         // Generate invoice number
         $lastInvoice = Invoice::latest('id')->first();
-        $invoiceNumber = 'INV-' . str_pad(($lastInvoice ? $lastInvoice->id + 1 : 1), 6, '0', STR_PAD_LEFT);
+        $invoiceNumber = 'INV-' . date('Y') . '-' . str_pad(($lastInvoice ? $lastInvoice->id + 1 : 1), 4, '0', STR_PAD_LEFT);
 
         $invoice = Invoice::create([
             'patient_id' => $request->patient_id,
-            'clinic_id' => $request->clinic_id,
             'invoice_number' => $invoiceNumber,
-            'invoice_date' => $request->invoice_date,
+            'issue_date' => $request->issue_date,
             'due_date' => $request->due_date,
-            'services' => $request->services,
+            'items' => json_encode($request->items),
             'subtotal' => $subtotal,
-            'tax_rate' => $taxRate,
-            'tax_amount' => $taxAmount,
-            'discount_amount' => $discount,
-            'total_amount' => $total,
+            'tax' => $taxAmount,
+            'total' => $total,
             'payment_status' => 'pending',
+            'payment_method' => null,
             'notes' => $request->notes,
         ]);
 
-        return response()->json($invoice->load(['patient', 'clinic']), 201);
+        return response()->json($invoice->load(['patient']), 201);
     }
 
     /**
@@ -108,7 +107,7 @@ class InvoiceController extends Controller
      */
     public function show(Invoice $invoice)
     {
-        $invoice->load(['patient', 'clinic']);
+        $invoice->load(['patient']);
 
         return response()->json($invoice);
     }
@@ -127,43 +126,38 @@ class InvoiceController extends Controller
 
         $request->validate([
             'patient_id' => 'sometimes|exists:patients,id',
-            'clinic_id' => 'sometimes|exists:clinics,id',
-            'invoice_date' => 'sometimes|date',
+            'issue_date' => 'sometimes|date',
             'due_date' => 'sometimes|date',
-            'services' => 'sometimes|array|min:1',
-            'services.*.description' => 'required_with:services|string',
-            'services.*.quantity' => 'required_with:services|integer|min:1',
-            'services.*.unit_price' => 'required_with:services|numeric|min:0',
-            'tax_rate' => 'nullable|numeric|min:0|max:100',
-            'discount_amount' => 'nullable|numeric|min:0',
+            'items' => 'sometimes|array|min:1',
+            'items.*.description' => 'required_with:items|string',
+            'items.*.quantity' => 'required_with:items|integer|min:1',
+            'items.*.unit_price' => 'required_with:items|numeric|min:0',
             'notes' => 'nullable|string',
         ]);
 
-        $updateData = $request->except(['services']);
+        $updateData = $request->except(['items']);
 
-        // Recalculate totals if services are updated
-        if ($request->has('services')) {
+        // Recalculate totals if items are updated
+        if ($request->has('items')) {
             $subtotal = 0;
-            foreach ($request->services as $service) {
-                $subtotal += $service['quantity'] * $service['unit_price'];
+            foreach ($request->items as $item) {
+                $subtotal += $item['quantity'] * $item['unit_price'];
             }
 
-            $discount = $request->discount_amount ?? $invoice->discount_amount;
-            $taxRate = $request->tax_rate ?? $invoice->tax_rate;
-            $taxAmount = ($subtotal - $discount) * ($taxRate / 100);
-            $total = $subtotal - $discount + $taxAmount;
+            $taxAmount = $subtotal * 0.19; // 19% tax rate
+            $total = $subtotal + $taxAmount;
 
             $updateData = array_merge($updateData, [
-                'services' => $request->services,
+                'items' => json_encode($request->items),
                 'subtotal' => $subtotal,
-                'tax_amount' => $taxAmount,
-                'total_amount' => $total,
+                'tax' => $taxAmount,
+                'total' => $total,
             ]);
         }
 
         $invoice->update($updateData);
 
-        return response()->json($invoice->load(['patient', 'clinic']));
+        return response()->json($invoice->load(['patient']));
     }
 
     /**
@@ -190,27 +184,19 @@ class InvoiceController extends Controller
     {
         $request->validate([
             'payment_status' => 'required|in:pending,paid,cancelled,overdue',
-            'payment_date' => 'nullable|date',
             'payment_method' => 'nullable|string',
             'notes' => 'nullable|string',
         ]);
 
         $updateData = [
             'payment_status' => $request->payment_status,
+            'payment_method' => $request->payment_method,
+            'notes' => $request->notes,
         ];
-
-        if ($request->payment_status === 'paid') {
-            $updateData['payment_date'] = $request->payment_date ?? now();
-            $updateData['payment_method'] = $request->payment_method;
-        }
-
-        if ($request->has('notes')) {
-            $updateData['notes'] = $request->notes;
-        }
 
         $invoice->update($updateData);
 
-        return response()->json($invoice->load(['patient', 'clinic']));
+        return response()->json($invoice->load(['patient']));
     }
 
     /**
@@ -218,18 +204,51 @@ class InvoiceController extends Controller
      */
     public function overdue(Request $request)
     {
-        $query = Invoice::with(['patient', 'clinic'])
-            ->where('payment_status', '!=', 'paid')
+        $query = Invoice::with(['patient'])
+            ->where('payment_status', 'pending')
             ->where('due_date', '<', now());
-
-        // Filter by clinic
-        if ($request->has('clinic_id')) {
-            $query->where('clinic_id', $request->clinic_id);
-        }
 
         $overdueInvoices = $query->orderBy('due_date')
             ->paginate($request->get('per_page', 15));
 
         return response()->json($overdueInvoices);
+    }
+
+    /**
+     * Get invoice statistics.
+     */
+    public function stats(Request $request)
+    {
+        $user = auth()->user();
+        
+        if ($user->role === 'admin' || $user->role === 'accountant') {
+            // Admin and accountants see all invoice stats
+            $stats = [
+                'total_invoices' => Invoice::count(),
+                'pending_invoices' => Invoice::where('payment_status', 'pending')->count(),
+                'paid_invoices' => Invoice::where('payment_status', 'paid')->count(),
+                'overdue_invoices' => Invoice::where('payment_status', 'pending')
+                    ->where('due_date', '<', now())->count(),
+                'total_revenue' => Invoice::where('payment_status', 'paid')->sum('total'),
+                'pending_revenue' => Invoice::where('payment_status', 'pending')->sum('total'),
+                'monthly_revenue' => Invoice::where('payment_status', 'paid')
+                    ->whereMonth('issue_date', now()->month)->sum('total'),
+                'average_invoice' => Invoice::where('payment_status', 'paid')->avg('total') ?? 0,
+            ];
+        } else {
+            // Other roles see limited or no financial data
+            $stats = [
+                'total_invoices' => 0,
+                'pending_invoices' => 0,
+                'paid_invoices' => 0,
+                'overdue_invoices' => 0,
+                'total_revenue' => 0,
+                'pending_revenue' => 0,
+                'monthly_revenue' => 0,
+                'average_invoice' => 0,
+            ];
+        }
+
+        return response()->json($stats);
     }
 }
