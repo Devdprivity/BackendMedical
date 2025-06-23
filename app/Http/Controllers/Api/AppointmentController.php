@@ -274,7 +274,7 @@ class AppointmentController extends Controller
                     $query->whereBetween('date_time', [$appointmentStart, $appointmentEnd])
                         ->orWhere(function($q) use ($appointmentStart, $appointmentEnd) {
                             $q->where('date_time', '<=', $appointmentStart)
-                              ->whereRaw('DATE_ADD(date_time, INTERVAL duration MINUTE) > ?', [$appointmentStart]);
+                              ->whereRaw('date_time + INTERVAL \'1 minute\' * COALESCE(duration, 30) > ?', [$appointmentStart]);
                         });
                 })
                 ->first();
@@ -453,7 +453,7 @@ class AppointmentController extends Controller
                           $subQ->whereBetween('date_time', [$appointmentStart, $appointmentEnd])
                                ->orWhere(function($conflictQ) use ($appointmentStart, $appointmentEnd) {
                                    $conflictQ->where('date_time', '<=', $appointmentStart)
-                                            ->whereRaw('DATE_ADD(date_time, INTERVAL COALESCE(duration, 30) MINUTE) > ?', [$appointmentStart]);
+                                            ->whereRaw("date_time + INTERVAL '1 minute' * COALESCE(duration, 30) > ?", [$appointmentStart]);
                                });
                       });
                 })
