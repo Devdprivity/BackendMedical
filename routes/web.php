@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\DoctorPatientRelationshipController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Api\PaymentMethodController;
 use App\Http\Controllers\Api\AppointmentPaymentController;
+use App\Http\Controllers\OnboardingController;
 
 // Página de inicio
 Route::get('/', function () {
@@ -40,6 +41,22 @@ Route::get('/login', function () {
 // Google OAuth Routes
 Route::get('/auth/google', [GoogleController::class, 'redirect'])->name('auth.google');
 Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('auth.google.callback');
+
+// Onboarding Routes
+Route::middleware(['auth'])->prefix('onboarding')->name('onboarding.')->group(function () {
+    Route::get('/', [OnboardingController::class, 'index'])->name('index');
+    Route::get('/profile', [OnboardingController::class, 'profile'])->name('profile');
+    Route::post('/profile', [OnboardingController::class, 'updateProfile'])->name('profile.update');
+    Route::get('/schedule', [OnboardingController::class, 'schedule'])->name('schedule');
+    Route::post('/schedule', [OnboardingController::class, 'updateSchedule'])->name('schedule.update');
+    Route::get('/booking', [OnboardingController::class, 'booking'])->name('booking');
+    Route::post('/booking', [OnboardingController::class, 'enableBooking'])->name('booking.enable');
+    Route::get('/payments', [OnboardingController::class, 'payments'])->name('payments');
+    Route::post('/payments', [OnboardingController::class, 'updatePayments'])->name('payments.update');
+    Route::get('/complete', [OnboardingController::class, 'complete'])->name('complete');
+    Route::post('/finish', [OnboardingController::class, 'finish'])->name('finish');
+    Route::post('/skip', [OnboardingController::class, 'skip'])->name('skip');
+});
 
 // Debug route (remove in production)
 Route::get('/debug/google-config', function () {

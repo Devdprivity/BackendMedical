@@ -57,66 +57,62 @@ class GoogleController extends Controller
                 'name' => $googleUser->getName()
             ]);
             
-            // Check if user already exists with this Google ID
-            $user = User::where('google_id', $googleUser->getId())->first();
+            // Check if user already exists
+            $user = User::where('email', $googleUser->getEmail())->first();
             
-            if ($user) {
-                // User exists, log them in
-                Auth::login($user);
-                $user->update(['last_login' => now()]);
-                
-                \Log::info('Existing Google user logged in', ['user_id' => $user->id]);
-                
-                return redirect()->route('dashboard')->with('success', '¡Bienvenido de vuelta!');
-            }
+            $isNewUser = false;
             
-            // Check if user exists with same email
-            $existingUser = User::where('email', $googleUser->getEmail())->first();
-            
-            if ($existingUser) {
-                // Link Google account to existing user
-                $existingUser->update([
+            if (!$user) {
+                // Create new user
+                $isNewUser = true;
+                $user = User::create([
+                    'name' => $googleUser->getName(),
+                    'email' => $googleUser->getEmail(),
                     'google_id' => $googleUser->getId(),
                     'avatar' => $googleUser->getAvatar(),
+                    'email_verified_at' => now(),
+                    'role' => 'doctor', // Default role for new users
+                    'status' => 'active',
                     'last_login' => now(),
                 ]);
                 
-                Auth::login($existingUser);
+                \Log::info('New user created', ['user_id' => $user->id]);
+            } else {
+                // Update existing user's Google ID if not set
+                if (!$user->google_id) {
+                    $user->update(['google_id' => $googleUser->getId()]);
+                }
                 
-                \Log::info('Google account linked to existing user', ['user_id' => $existingUser->id]);
-                
-                return redirect()->route('dashboard')->with('success', '¡Cuenta de Google vinculada exitosamente!');
+                \Log::info('Existing user logged in', ['user_id' => $user->id]);
             }
-            
-            // Create new user
-            $user = User::create([
-                'name' => $googleUser->getName(),
-                'email' => $googleUser->getEmail(),
-                'google_id' => $googleUser->getId(),
-                'avatar' => $googleUser->getAvatar(),
-                'email_verified_at' => now(),
-                'role' => 'doctor', // Default role for new registrations (not admin)
-                'status' => 'active',
-                'last_login' => now(),
-            ]);
-            
-            \Log::info('New Google user created', ['user_id' => $user->id]);
-            
-            // Assign free trial subscription
-            $this->assignFreeTrial($user);
-            
+
+            // Login user
             Auth::login($user);
             
-            return redirect()->route('dashboard')->with('success', '¡Cuenta creada exitosamente! Tu prueba gratuita de 7 días ha comenzado.');
+            // Redirect based on user status
+            if ($isNewUser || !($user->onboarding_completed ?? false)) {
+                \Log::info('Redirecting to onboarding', [
+                    'user_id' => $user->id,
+                    'is_new_user' => $isNewUser,
+                    'onboarding_completed' => $user->onboarding_completed ?? false
+                ]);
+                
+                return redirect()->route('onboarding.index')->with('success', 
+                    $isNewUser ? 
+                    '¡Bienvenido a MediCare Pro! Vamos a configurar tu cuenta paso a paso.' : 
+                    'Completa tu configuración de cuenta para comenzar.'
+                );
+            }
+            
+            \Log::info('Redirecting to dashboard', ['user_id' => $user->id]);
+            return redirect()->route('dashboard')->with('success', '¡Bienvenido de vuelta!');
             
         } catch (\Exception $e) {
-            \Log::error('Google OAuth Error: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
-                'request_url' => request()->fullUrl(),
-                'environment' => app()->environment()
+            \Log::error('Google OAuth callback error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
             ]);
             
-            return redirect()->route('login.view')->with('error', 'Error al autenticar con Google. Por favor, intenta de nuevo.');
+            return redirect()->route('login.view')->with('error', 'Error al procesar la autenticación con Google. Por favor, intenta de nuevo.');
         }
     }
 
