@@ -41,6 +41,20 @@ Route::get('/login', function () {
 Route::get('/auth/google', [GoogleController::class, 'redirect'])->name('auth.google');
 Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('auth.google.callback');
 
+// Debug route (remove in production)
+Route::get('/debug/google-config', function () {
+    return response()->json([
+        'app_url' => config('app.url'),
+        'app_env' => config('app.env'),
+        'app_debug' => config('app.debug'),
+        'google_client_id' => config('services.google.client_id') ? 'Set' : 'Not set',
+        'google_client_secret' => config('services.google.client_secret') ? 'Set' : 'Not set',
+        'google_redirect' => config('services.google.redirect'),
+        'environment' => app()->environment(),
+        'current_url' => request()->getSchemeAndHttpHost(),
+    ]);
+})->name('debug.google-config');
+
 // Registration Route
 Route::post('/auth/register', [GoogleController::class, 'register'])->name('auth.register');
 

@@ -19,7 +19,22 @@ class GoogleController extends Controller
      */
     public function redirect()
     {
-        return Socialite::driver('google')->redirect();
+        try {
+            \Log::info('Google OAuth redirect initiated', [
+                'client_id' => config('services.google.client_id') ? 'configured' : 'missing',
+                'redirect_uri' => config('services.google.redirect'),
+                'app_url' => config('app.url'),
+                'environment' => app()->environment(),
+                'current_url' => request()->getSchemeAndHttpHost()
+            ]);
+            
+            return Socialite::driver('google')->redirect();
+        } catch (\Exception $e) {
+            \Log::error('Google OAuth redirect error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->route('login.view')->with('error', 'Error al configurar la autenticación con Google.');
+        }
     }
 
     /**
@@ -28,7 +43,19 @@ class GoogleController extends Controller
     public function callback()
     {
         try {
+            \Log::info('Google OAuth callback received', [
+                'request_url' => request()->fullUrl(),
+                'callback_url' => config('services.google.redirect'),
+                'environment' => app()->environment()
+            ]);
+            
             $googleUser = Socialite::driver('google')->user();
+            
+            \Log::info('Google user data received', [
+                'google_id' => $googleUser->getId(),
+                'email' => $googleUser->getEmail(),
+                'name' => $googleUser->getName()
+            ]);
             
             // Check if user already exists with this Google ID
             $user = User::where('google_id', $googleUser->getId())->first();
@@ -37,6 +64,8 @@ class GoogleController extends Controller
                 // User exists, log them in
                 Auth::login($user);
                 $user->update(['last_login' => now()]);
+                
+                \Log::info('Existing Google user logged in', ['user_id' => $user->id]);
                 
                 return redirect()->route('dashboard')->with('success', '¡Bienvenido de vuelta!');
             }
@@ -54,6 +83,8 @@ class GoogleController extends Controller
                 
                 Auth::login($existingUser);
                 
+                \Log::info('Google account linked to existing user', ['user_id' => $existingUser->id]);
+                
                 return redirect()->route('dashboard')->with('success', '¡Cuenta de Google vinculada exitosamente!');
             }
             
@@ -69,6 +100,8 @@ class GoogleController extends Controller
                 'last_login' => now(),
             ]);
             
+            \Log::info('New Google user created', ['user_id' => $user->id]);
+            
             // Assign free trial subscription
             $this->assignFreeTrial($user);
             
@@ -77,7 +110,11 @@ class GoogleController extends Controller
             return redirect()->route('dashboard')->with('success', '¡Cuenta creada exitosamente! Tu prueba gratuita de 7 días ha comenzado.');
             
         } catch (\Exception $e) {
-            \Log::error('Google OAuth Error: ' . $e->getMessage());
+            \Log::error('Google OAuth Error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'request_url' => request()->fullUrl(),
+                'environment' => app()->environment()
+            ]);
             
             return redirect()->route('login.view')->with('error', 'Error al autenticar con Google. Por favor, intenta de nuevo.');
         }

@@ -708,7 +708,18 @@
         
         // Google OAuth
         function loginWithGoogle() {
-            window.location.href = '/auth/google';
+            // Check if we're in the right environment
+            if (window.location.hostname === 'localhost' && window.location.href.includes('laravel.cloud')) {
+                showAlert('error', 'Error de configuración: Contacta al administrador.');
+                return;
+            }
+            
+            try {
+                window.location.href = '/auth/google';
+            } catch (error) {
+                console.error('Error redirecting to Google OAuth:', error);
+                showAlert('error', 'Error al conectar con Google. Por favor, intenta de nuevo.');
+            }
         }
         
         // Email Login
