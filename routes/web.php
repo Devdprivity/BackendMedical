@@ -597,10 +597,7 @@ Route::middleware('auth:web')->group(function () {
         Route::patch('/api/users/{user}/password', [UserController::class, 'resetPassword']);
     });
     
-    // Basic users list for filters (available to medical staff)
-    Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
-        Route::get('/api/users/basic', [UserController::class, 'basicList']);
-    });
+    // Basic users list for filters (available to medical staff) - Moved to api.php
     
     // Treatments API - Medical staff
     Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {

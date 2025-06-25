@@ -105,6 +105,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Routes for web interface (using web session authentication)
 Route::middleware(['web', 'auth'])->group(function () {
+    // Users - Basic list for filters (available to medical staff)
+    Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
+        Route::get('/users/basic', [App\Http\Controllers\Api\UserController::class, 'basicList']);
+    });
+    
     // Payment Methods
     Route::apiResource('payment-methods', PaymentMethodController::class);
     Route::post('/payment-methods/order', [PaymentMethodController::class, 'updateOrder']);

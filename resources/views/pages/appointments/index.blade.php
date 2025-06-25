@@ -2612,22 +2612,35 @@ async function loadPublicBookingStats() {
             const weekCount = appointments.filter(apt => apt.appointment_date >= startOfWeek).length;
             const monthCount = appointments.filter(apt => apt.appointment_date >= startOfMonth).length;
             
-            document.getElementById('publicBookingsToday').textContent = todayCount;
-            document.getElementById('publicBookingsWeek').textContent = weekCount;
-            document.getElementById('publicBookingsMonth').textContent = monthCount;
+            // Only update elements if they exist
+            const todayElement = document.getElementById('publicBookingsToday');
+            const weekElement = document.getElementById('publicBookingsWeek');
+            const monthElement = document.getElementById('publicBookingsMonth');
+            
+            if (todayElement) todayElement.textContent = todayCount;
+            if (weekElement) weekElement.textContent = weekCount;
+            if (monthElement) monthElement.textContent = monthCount;
         } else {
             console.error('Failed to load public booking stats');
-            // Set default values
-            document.getElementById('publicBookingsToday').textContent = '0';
-            document.getElementById('publicBookingsWeek').textContent = '0';
-            document.getElementById('publicBookingsMonth').textContent = '0';
+            // Set default values only if elements exist
+            const todayElement = document.getElementById('publicBookingsToday');
+            const weekElement = document.getElementById('publicBookingsWeek');
+            const monthElement = document.getElementById('publicBookingsMonth');
+            
+            if (todayElement) todayElement.textContent = '0';
+            if (weekElement) weekElement.textContent = '0';
+            if (monthElement) monthElement.textContent = '0';
         }
     } catch (error) {
         console.error('Error loading public booking stats:', error);
-        // Set default values
-        document.getElementById('publicBookingsToday').textContent = '0';
-        document.getElementById('publicBookingsWeek').textContent = '0';
-        document.getElementById('publicBookingsMonth').textContent = '0';
+        // Set default values only if elements exist
+        const todayElement = document.getElementById('publicBookingsToday');
+        const weekElement = document.getElementById('publicBookingsWeek');
+        const monthElement = document.getElementById('publicBookingsMonth');
+        
+        if (todayElement) todayElement.textContent = '0';
+        if (weekElement) weekElement.textContent = '0';
+        if (monthElement) monthElement.textContent = '0';
     }
 }
 

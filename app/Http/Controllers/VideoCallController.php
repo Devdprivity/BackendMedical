@@ -168,8 +168,21 @@ class VideoCallController extends Controller
      */
     public function end(VideoCall $videoCall)
     {
-        if (!$this->canManageVideoCall($videoCall->appointment)) {
-            return response()->json(['error' => 'No autorizado'], 403);
+        // For instant video calls, check different permissions
+        if ($videoCall->is_instant) {
+            $user = Auth::user();
+            
+            // Only the creator, admins, or doctors can end instant calls
+            if (!($user->role === 'admin' || 
+                  $user->role === 'doctor' || 
+                  $videoCall->created_by === $user->id)) {
+                return response()->json(['error' => 'No autorizado para finalizar esta sala'], 403);
+            }
+        } else {
+            // For appointment-based calls, use original logic
+            if (!$this->canManageVideoCall($videoCall->appointment)) {
+                return response()->json(['error' => 'No autorizado'], 403);
+            }
         }
 
         $videoCall->end();
@@ -177,13 +190,14 @@ class VideoCallController extends Controller
         Log::info('Video call ended', [
             'video_call_id' => $videoCall->id,
             'duration' => $videoCall->duration_minutes,
-            'ended_by' => Auth::id()
+            'ended_by' => Auth::id(),
+            'is_instant' => $videoCall->is_instant
         ]);
 
         return response()->json([
             'success' => true,
             'video_call' => $videoCall->fresh(),
-            'message' => 'Videollamada finalizada'
+            'message' => $videoCall->is_instant ? 'Sala finalizada' : 'Videollamada finalizada'
         ]);
     }
 

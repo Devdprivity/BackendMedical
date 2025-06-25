@@ -481,12 +481,65 @@
 <script>
 let jitsiApi = null;
 let previewStream = null;
+let userJoinedConference = false;
+let currentUserName = '{{ $user->name ?? "Usuario" }}';
+let currentUserEmail = '{{ $user->email ?? "" }}';
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded - initializing video call page');
+    console.log('Video call data:', {
+        id: '{{ $videoCall->id }}',
+        is_instant: {{ $videoCall->is_instant ? 'true' : 'false' }},
+        status: '{{ $videoCall->status }}',
+        room_name: '{{ $videoCall->room_name }}'
+    });
+    
+    // Check if user has saved preferences
+    checkSavedPreferences();
+    
     initializeDeviceTests();
     setupEventListeners();
     pollCallStatus();
 });
+
+function checkSavedPreferences() {
+    try {
+        const hasAutoJoin = localStorage.getItem('medicare_auto_join');
+        const lastUsed = localStorage.getItem('medicare_last_used');
+        
+        if (hasAutoJoin === 'true' && lastUsed) {
+            const lastUsedDate = new Date(lastUsed);
+            const daysSinceLastUse = Math.floor((new Date() - lastUsedDate) / (1000 * 60 * 60 * 24));
+            
+            console.log(`User has saved preferences. Last used ${daysSinceLastUse} days ago.`);
+            
+            // Show a brief notification that saved preferences will be used
+            if (daysSinceLastUse < 30) {
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #4CAF50;
+                    color: white;
+                    padding: 10px 15px;
+                    border-radius: 5px;
+                    z-index: 10000;
+                    font-size: 14px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+                `;
+                notification.textContent = `✓ Usando configuración guardada: ${currentUserName}`;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            }
+        }
+    } catch (error) {
+        console.warn('Could not check saved preferences:', error);
+    }
+}
 
 function initializeDeviceTests() {
     checkDevicePermissions();
@@ -587,6 +640,7 @@ async function startCall() {
 
 async function joinCall() {
     try {
+        console.log('joinCall: Starting to join video call {{ $videoCall->id }}');
         const response = await fetch(`/api/video-calls/{{ $videoCall->id }}/join`, {
             method: 'POST',
             headers: {
@@ -596,10 +650,13 @@ async function joinCall() {
         });
         
         const result = await response.json();
+        console.log('joinCall: API response:', result);
         
         if (result.success) {
+            console.log('joinCall: Success, initializing Jitsi');
             initializeJitsi();
         } else {
+            console.error('joinCall: API error:', result.error);
             alert(result.error || 'Error al unirse a la videollamada');
         }
     } catch (error) {
@@ -609,11 +666,27 @@ async function joinCall() {
 }
 
 function initializeJitsi() {
+    console.log('initializeJitsi: Starting Jitsi initialization');
+    userJoinedConference = false; // Reset the flag
     stopVideoPreview();
     
     // Hide pre-call setup
     document.getElementById('pre-call-setup').style.display = 'none';
     document.getElementById('jitsi-container').style.display = 'flex';
+    console.log('initializeJitsi: UI elements switched');
+    
+    // Load saved user preferences
+    try {
+        const storedName = localStorage.getItem('jitsi_user_name');
+        const storedEmail = localStorage.getItem('jitsi_user_email');
+        
+        if (storedName) currentUserName = storedName;
+        if (storedEmail) currentUserEmail = storedEmail;
+        
+        console.log('Loaded user preferences:', { name: currentUserName, email: currentUserEmail });
+    } catch (error) {
+        console.warn('Could not load from localStorage:', error);
+    }
     
     // Configure Jitsi
     const domain = 'meet.jit.si';
@@ -623,8 +696,8 @@ function initializeJitsi() {
         height: '100%',
         parentNode: document.querySelector('#jitsi-meet'),
         userInfo: {
-            displayName: '{{ $user->name ?? "Usuario" }}',
-            email: '{{ $user->email ?? "" }}'
+            displayName: currentUserName,
+            email: currentUserEmail
         },
         configOverwrite: {
             startWithAudioMuted: false,
@@ -635,16 +708,27 @@ function initializeJitsi() {
             startScreenSharing: false,
             enableEmailInStats: false,
             disableProfile: false,
-            hideLobbyButton: true, // Hide lobby for instant calls
+            hideLobbyButton: true,
             enableLobbyChat: false,
             enableInsecureRoomNameWarning: false,
             enableAutomaticUrlCaching: false,
             startSilent: false,
             disableDeepLinking: true,
+            // Disable Google integration to prevent account selection
+            googleAnalyticsTrackingId: null,
+            enableGoogleLogin: false,
+            enableCalendarIntegration: false,
+            disableThirdPartyRequests: true,
+            enableNoAudioDetection: false,
+            enableNoisyMicDetection: false,
+            // Auto-configure email from our system
+            defaultLocalDisplayName: currentUserName,
+            defaultRemoteDisplayName: 'Participante',
             @if($videoCall->is_instant)
-            // Additional config for instant calls
-            requireDisplayName: false, // Don't require display name for instant calls
+            // Simplified config for instant calls
+            requireDisplayName: false,
             enableUserRolesBasedOnToken: false,
+            enableClosePage: false, // Prevent automatic close events
             @endif
         },
         interfaceConfigOverwrite: {
@@ -661,7 +745,7 @@ function initializeJitsi() {
                 , 'mute-everyone'
                 @endif
             ],
-            SETTINGS_SECTIONS: ['devices', 'language', 'moderator', 'profile', 'calendar'],
+            SETTINGS_SECTIONS: ['devices', 'language', 'moderator', 'profile'],
             SHOW_JITSI_WATERMARK: false,
             SHOW_WATERMARK_FOR_GUESTS: false,
             SHOW_BRAND_WATERMARK: false,
@@ -674,7 +758,10 @@ function initializeJitsi() {
             DEFAULT_BACKGROUND: '#2c3e50',
             INITIAL_TOOLBAR_TIMEOUT: 20000,
             TOOLBAR_TIMEOUT: 4000,
-            DEFAULT_REMOTE_DISPLAY_NAME: 'Usuario',
+            DEFAULT_REMOTE_DISPLAY_NAME: 'Participante',
+            // Disable Google-related interface elements
+            HIDE_INVITE_MORE_HEADER: true,
+            DISABLE_PRESENCE_STATUS: true,
             @if($videoCall->is_instant)
             // Instant call specific interface settings
             SHOW_CHROME_EXTENSION_BANNER: false,
@@ -683,15 +770,33 @@ function initializeJitsi() {
         }
     };
     
+    console.log('initializeJitsi: Creating Jitsi API with options:', options);
     jitsiApi = new JitsiMeetExternalAPI(domain, options);
+    console.log('initializeJitsi: Jitsi API created successfully');
     
     // Event listeners
     jitsiApi.addEventListener('videoConferenceJoined', () => {
-        console.log('User joined the conference');
+        console.log('Jitsi Event: User joined the conference');
+        userJoinedConference = true;
         
-        // Set display name explicitly if not set
+        // Set display name and email explicitly using saved preferences
         @if($user)
-        jitsiApi.executeCommand('displayName', '{{ $user->name ?? "Usuario" }}');
+        jitsiApi.executeCommand('displayName', currentUserName);
+        @if($user->email)
+        jitsiApi.executeCommand('email', currentUserEmail);
+        console.log('Set user email to:', currentUserEmail);
+        @endif
+        
+        // Save/update user preferences in localStorage to avoid future prompts
+        try {
+            localStorage.setItem('jitsi_user_name', currentUserName);
+            localStorage.setItem('jitsi_user_email', currentUserEmail);
+            localStorage.setItem('medicare_auto_join', 'true');
+            localStorage.setItem('medicare_last_used', new Date().toISOString());
+            console.log('Saved user preferences to localStorage');
+        } catch (error) {
+            console.warn('Could not save to localStorage:', error);
+        }
         @endif
         
         // Send notification that user joined
@@ -707,8 +812,19 @@ function initializeJitsi() {
     });
     
     jitsiApi.addEventListener('videoConferenceLeft', () => {
-        console.log('User left the conference');
+        console.log('Jitsi Event: User left the conference');
+        @if($videoCall->is_instant)
+        // For instant calls, only handle end if user actually joined first
+        if (userJoinedConference) {
+            console.log('User had joined - handling call end');
+            handleCallEnd();
+        } else {
+            console.log('User never joined - ignoring conference left event');
+        }
+        @else
+        // For appointment calls, handle immediately
         handleCallEnd();
+        @endif
     });
     
     jitsiApi.addEventListener('participantJoined', (participant) => {
@@ -719,13 +835,30 @@ function initializeJitsi() {
         console.log('Participant left:', participant);
     });
     
-    // Additional configuration for instant calls
-    @if($videoCall->is_instant)
+    // Additional event listeners for better integration
     jitsiApi.addEventListener('readyToClose', () => {
-        console.log('Conference is ready to close');
-        handleCallEnd();
+        console.log('Jitsi ready to close event');
     });
     
+    jitsiApi.addEventListener('participantRoleChanged', (event) => {
+        console.log('Participant role changed:', event);
+    });
+    
+    // Force user configuration after a short delay
+    setTimeout(() => {
+        try {
+            jitsiApi.executeCommand('displayName', currentUserName);
+            if (currentUserEmail) {
+                jitsiApi.executeCommand('email', currentUserEmail);
+            }
+            console.log('Forced user configuration applied');
+        } catch (error) {
+            console.warn('Could not force user configuration:', error);
+        }
+    }, 3000);
+    
+    // Additional configuration for instant calls
+    @if($videoCall->is_instant)
     // Auto-focus for better UX
     setTimeout(() => {
         const jitsiFrame = document.querySelector('iframe');
@@ -753,8 +886,13 @@ async function endCall() {
                 if (jitsiApi) {
                     jitsiApi.dispose();
                 }
+                @if($videoCall->is_instant)
+                alert('Sala de videollamada finalizada exitosamente');
+                window.location.href = '/dashboard';
+                @else
                 alert('Videoconsulta finalizada exitosamente');
                 window.location.href = '/appointments';
+                @endif
             } else {
                 alert(result.error || 'Error al finalizar la videollamada');
             }
@@ -770,21 +908,53 @@ function leaveCall() {
         if (jitsiApi) {
             jitsiApi.dispose();
         }
+        @if($videoCall->is_instant)
+        // For instant calls, redirect to dashboard
+        window.location.href = '/dashboard';
+        @else
+        // For appointment-based calls, redirect to appointments
         window.location.href = '/appointments';
+        @endif
     }
 }
 
 function cancelCall() {
     stopVideoPreview();
+    @if($videoCall->is_instant)
+    // For instant calls, redirect to dashboard
+    window.location.href = '/dashboard';
+    @else
+    // For appointment-based calls, redirect to appointments
     window.location.href = '/appointments';
+    @endif
 }
 
 function handleCallEnd() {
+    console.log('handleCallEnd: Called - disposing Jitsi API');
+    userJoinedConference = false; // Reset the flag
     if (jitsiApi) {
         jitsiApi.dispose();
         jitsiApi = null;
     }
+    
+    @if($videoCall->is_instant)
+    // For instant calls, show a message and stay on the page or redirect to dashboard
+    console.log('handleCallEnd: Instant call - showing confirmation dialog');
+    if (confirm('La videollamada ha terminado. ¿Deseas volver al panel de control?')) {
+        console.log('handleCallEnd: User chose to go to dashboard');
+        window.location.href = '/dashboard';
+    } else {
+        console.log('handleCallEnd: User chose to stay - showing pre-call setup');
+        // Stay on the page - show pre-call setup again
+        document.getElementById('jitsi-container').style.display = 'none';
+        document.getElementById('pre-call-setup').style.display = 'flex';
+        initializeDeviceTests();
+    }
+    @else
+    // For appointment-based calls, redirect to appointments
+    console.log('handleCallEnd: Appointment-based call - redirecting to appointments');
     window.location.href = '/appointments';
+    @endif
 }
 
 // Poll call status for patients waiting for doctor to start
