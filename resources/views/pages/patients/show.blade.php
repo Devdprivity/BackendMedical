@@ -372,10 +372,15 @@ async function loadPatientData() {
         });
         
         if (response.ok) {
-            const patient = await response.json();
-            displayPatientData(patient);
+            const result = await response.json();
+            if (result.success) {
+                displayPatientData(result.data);
+            } else {
+                showError(result.message || 'Error al cargar la información del paciente');
+            }
         } else {
-            showError('Error al cargar la información del paciente');
+            const errorData = await response.json().catch(() => ({}));
+            showError(errorData.message || 'Error al cargar la información del paciente');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -385,13 +390,13 @@ async function loadPatientData() {
 
 function displayPatientData(patient) {
     // Update avatar
-    const initials = getPatientInitials(patient.first_name, patient.last_name);
+    const initials = getPatientInitials(patient.name);
     document.getElementById('patientAvatar').textContent = initials;
     document.getElementById('patientAvatar').style.background = getPatientColor(patient.id);
     
     // Update basic info
-    document.getElementById('patientName').textContent = `${patient.first_name || ''} ${patient.last_name || ''}`.trim();
-    document.getElementById('patientAge').textContent = `${calculateAge(patient.date_of_birth) || '--'} años`;
+    document.getElementById('patientName').textContent = patient.name || 'Sin nombre';
+    document.getElementById('patientAge').textContent = `${calculateAge(patient.birth_date) || '--'} años`;
     
     const statusBadge = document.getElementById('patientStatus');
     statusBadge.textContent = patient.status === 'active' ? 'Activo' : 'Inactivo';
@@ -402,11 +407,14 @@ function displayPatientData(patient) {
     document.getElementById('patientEmail').textContent = patient.email || '--';
     
     // Update detailed info
-    document.getElementById('patientId').textContent = patient.identification_number || '--';
-    document.getElementById('patientBirthDate').textContent = formatDate(patient.date_of_birth) || '--';
+    document.getElementById('patientId').textContent = patient.dni || '--';
+    document.getElementById('patientBirthDate').textContent = formatDate(patient.birth_date) || '--';
     document.getElementById('patientGender').textContent = formatGender(patient.gender) || '--';
     document.getElementById('patientAddress').textContent = patient.address || '--';
-    document.getElementById('patientEmergencyContact').textContent = patient.emergency_contact || '--';
+    document.getElementById('patientEmergencyContact').textContent = 
+        (patient.emergency_contact_name && patient.emergency_contact_phone) 
+            ? `${patient.emergency_contact_name} - ${patient.emergency_contact_phone}` 
+            : '--';
     document.getElementById('patientInsurance').textContent = patient.insurance_info || '--';
     
     // Update button links
@@ -424,8 +432,12 @@ async function loadPatientAppointments() {
         });
         
         if (response.ok) {
-            const appointments = await response.json();
-            displayAppointments(appointments);
+            const result = await response.json();
+            if (result.success) {
+                displayAppointments(result.data);
+            } else {
+                document.getElementById('appointmentsContainer').innerHTML = `<p>${result.message}</p>`;
+            }
         } else {
             document.getElementById('appointmentsContainer').innerHTML = '<p>Error al cargar las citas</p>';
         }
@@ -493,10 +505,17 @@ function switchTab(tabId) {
 }
 
 // Utility functions
-function getPatientInitials(firstName, lastName) {
-    const first = firstName ? firstName.charAt(0).toUpperCase() : '';
-    const last = lastName ? lastName.charAt(0).toUpperCase() : '';
-    return first + last || 'P';
+function getPatientInitials(fullName) {
+    if (!fullName) return 'P';
+    
+    const names = fullName.trim().split(' ');
+    if (names.length === 1) {
+        return names[0].charAt(0).toUpperCase();
+    }
+    
+    const first = names[0].charAt(0).toUpperCase();
+    const last = names[names.length - 1].charAt(0).toUpperCase();
+    return first + last;
 }
 
 function getPatientColor(id) {
@@ -551,7 +570,32 @@ function formatStatus(status) {
 
 function showError(message) {
     console.error(message);
-    // Implement your error display logic here
+    
+    // Show error in patient info section
+    document.getElementById('patientName').textContent = 'Error al cargar';
+    document.getElementById('patientAge').textContent = '--';
+    
+    // Show error message in main content
+    const container = document.querySelector('.page-header').nextElementSibling;
+    if (container) {
+        container.innerHTML = `
+            <div class="card">
+                <div class="card-body" style="text-align: center; padding: 3rem;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: var(--danger); margin-bottom: 1rem;"></i>
+                    <h3 style="color: var(--danger); margin-bottom: 1rem;">Error al cargar el paciente</h3>
+                    <p style="color: var(--gray-600); margin-bottom: 2rem;">${message}</p>
+                    <button class="btn btn-primary" onclick="location.reload()">
+                        <i class="fas fa-redo"></i>
+                        Reintentar
+                    </button>
+                    <a href="/patients" class="btn btn-secondary" style="margin-left: 1rem;">
+                        <i class="fas fa-arrow-left"></i>
+                        Volver a Pacientes
+                    </a>
+                </div>
+            </div>
+        `;
+    }
 }
 
 // Action functions

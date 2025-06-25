@@ -68,6 +68,8 @@ class AuthController extends Controller
             'user' => $user,
             'token' => $token,
             'token_type' => 'Bearer',
+            'requires_onboarding' => !($user->onboarding_completed ?? false),
+            'onboarding_url' => route('onboarding.index'),
         ], 201);
     }
 

@@ -55,9 +55,17 @@ trait FiltersUserData
         
         switch ($entityType) {
             case 'patients':
-                // Doctor sees only patients they have treated
-                return $query->whereHas('appointments', function($q) use ($doctorId) {
-                    $q->where('doctor_id', $doctorId);
+                // Doctor sees patients from their clinic or patients they have treated
+                return $query->where(function($q) use ($doctorId, $user) {
+                    $q->whereHas('appointments', function($appointmentQuery) use ($doctorId) {
+                        $appointmentQuery->where('doctor_id', $doctorId);
+                    })
+                    ->orWhere('created_by', $user->id) // Patients created by this doctor
+                    ->orWhere(function($clinicQuery) use ($user) {
+                        if ($user->clinic_id) {
+                            $clinicQuery->where('preferred_clinic_id', $user->clinic_id);
+                        }
+                    });
                 });
                 
             case 'appointments':
@@ -220,8 +228,8 @@ trait FiltersUserData
         $permissions = [
             'doctor' => [
                 'view' => ['patients', 'appointments', 'surgeries', 'exams', 'medications', 'treatments', 'relationships'],
-                'create' => ['appointments', 'exams', 'surgeries', 'treatments', 'relationships', 'medications'],
-                'update' => ['appointments', 'exams', 'surgeries', 'treatments', 'relationships', 'medications'],
+                'create' => ['patients', 'appointments', 'exams', 'surgeries', 'treatments', 'relationships', 'medications'],
+                'update' => ['patients', 'appointments', 'exams', 'surgeries', 'treatments', 'relationships', 'medications'],
                 'delete' => ['appointments', 'treatments', 'medications']
             ],
             'nurse' => [

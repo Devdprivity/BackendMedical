@@ -30,6 +30,7 @@ class User extends Authenticatable
         'booking_slug',
         'booking_enabled',
         'consultation_fee',
+        'currency',
         'consultation_duration',
         'schedule_start',
         'schedule_end',
@@ -40,6 +41,18 @@ class User extends Authenticatable
         'specialty',
         'clinic_id',
         'location_id',
+        'medical_license',
+        'years_experience',
+        'payment_methods',
+        'bank_account',
+        'paypal_email',
+        'onboarding_completed',
+        'onboarding_profile_completed',
+        'onboarding_schedule_completed',
+        'onboarding_booking_completed',
+        'onboarding_payments_completed',
+        'onboarding_completed_at',
+        'phone',
     ];
 
     /**

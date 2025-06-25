@@ -21,6 +21,9 @@ return new class extends Migration
             $table->timestamp('onboarding_completed_at')->nullable();
             
             // Profile fields (if not already exist)
+            if (!Schema::hasColumn('users', 'phone')) {
+                $table->string('phone')->nullable();
+            }
             if (!Schema::hasColumn('users', 'medical_license')) {
                 $table->string('medical_license')->nullable();
             }
@@ -64,6 +67,9 @@ return new class extends Migration
             ]);
             
             // Remove profile fields if they were added by this migration
+            if (Schema::hasColumn('users', 'phone')) {
+                $table->dropColumn('phone');
+            }
             if (Schema::hasColumn('users', 'medical_license')) {
                 $table->dropColumn('medical_license');
             }

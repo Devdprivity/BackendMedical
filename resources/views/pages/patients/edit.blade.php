@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
-@section('title', 'Nuevo Paciente - MediCare Pro')
+@section('title', 'Editar Paciente - MediCare Pro')
 
 @section('content')
 <div class="page-header">
     <div>
-        <h1 class="page-title">Nuevo Paciente</h1>
-        <p class="page-subtitle">Registrar un nuevo paciente en el sistema</p>
+        <h1 class="page-title">Editar Paciente</h1>
+        <p class="page-subtitle">Actualizar información del paciente</p>
     </div>
 </div>
 
@@ -166,8 +166,8 @@
             Cancelar
         </a>
         <button type="submit" class="btn btn-primary" id="submitBtn">
-            <i class="fas fa-user-plus"></i>
-            Crear Paciente
+            <i class="fas fa-save"></i>
+            Actualizar Paciente
         </button>
     </div>
 </form>
@@ -215,8 +215,11 @@
 
 @push('scripts')
 <script>
+let patientId = {{ $id }};
+
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('patientForm').addEventListener('submit', handleSubmit);
+    loadPatientData();
     
     // Auto-calculate age when date of birth changes
     document.getElementById('birth_date').addEventListener('change', function() {
@@ -235,6 +238,45 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+async function loadPatientData() {
+    try {
+        showLoading();
+        
+        const response = await fetch(`/api/patients/${patientId}`, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            const patient = result.data;
+            
+            // Fill form with patient data
+            document.getElementById('name').value = patient.name || '';
+            document.getElementById('dni').value = patient.dni || '';
+            document.getElementById('birth_date').value = patient.birth_date || '';
+            document.getElementById('gender').value = patient.gender || '';
+            document.getElementById('blood_type').value = patient.blood_type || '';
+            document.getElementById('status').value = patient.status || 'active';
+            document.getElementById('phone').value = patient.phone || '';
+            document.getElementById('email').value = patient.email || '';
+            document.getElementById('address').value = patient.address || '';
+            
+            hideLoading();
+        } else {
+            hideLoading();
+            showError('Error al cargar los datos del paciente');
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('Error:', error);
+        showError('Error de conexión al cargar los datos');
+    }
+}
+
 async function handleSubmit(e) {
     e.preventDefault();
     
@@ -252,8 +294,8 @@ async function handleSubmit(e) {
     try {
         showLoading();
         
-        const response = await fetch('/api/patients', {
-            method: 'POST',
+        const response = await fetch(`/api/patients/${patientId}`, {
+            method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
@@ -267,7 +309,7 @@ async function handleSubmit(e) {
         const result = await response.json();
         
         if (response.ok) {
-            showSuccess('Paciente creado exitosamente. Redirigiendo...');
+            showSuccess('Paciente actualizado exitosamente. Redirigiendo...');
             setTimeout(() => {
                 window.location.href = '/patients';
             }, 2000);
@@ -394,13 +436,13 @@ function showError(message) {
 function showLoading() {
     const submitBtn = document.getElementById('submitBtn');
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...';
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualizando...';
 }
 
 function hideLoading() {
     const submitBtn = document.getElementById('submitBtn');
     submitBtn.disabled = false;
-    submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Crear Paciente';
+    submitBtn.innerHTML = '<i class="fas fa-save"></i> Actualizar Paciente';
 }
 </script>
 @endpush 

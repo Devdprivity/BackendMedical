@@ -165,6 +165,50 @@
             </div>
         </div>
 
+        <!-- Payment Links Section -->
+        <div class="card">
+            <div class="card-header">
+                <div style="display: flex; align-items: center; justify-content: between; width: 100%;">
+                    <h3 class="card-title">
+                        <i class="fas fa-link"></i>
+                        Links de Pago
+                    </h3>
+                    <a href="{{ route('payment-links.index') }}" class="btn btn-primary" style="font-size: 0.875rem; margin-left: auto;">
+                        <i class="fas fa-external-link-alt"></i>
+                        Gestionar Links
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <p style="color: var(--gray-600); margin-bottom: 1rem; font-size: 0.9rem;">
+                    Crea links de pago personalizados para enviar a tus pacientes por WhatsApp, email o cualquier medio.
+                </p>
+                
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                    <div style="text-align: center; padding: 1rem; background: var(--gray-50); border-radius: 8px;">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);" id="total-links">-</div>
+                        <div style="font-size: 0.8rem; color: var(--gray-600);">Total Links</div>
+                    </div>
+                    <div style="text-align: center; padding: 1rem; background: var(--gray-50); border-radius: 8px;">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);" id="active-links">-</div>
+                        <div style="font-size: 0.8rem; color: var(--gray-600);">Activos</div>
+                    </div>
+                    <div style="text-align: center; padding: 1rem; background: var(--gray-50); border-radius: 8px;">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--warning);" id="used-links">-</div>
+                        <div style="font-size: 0.8rem; color: var(--gray-600);">Usados</div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                    <x-buttons.create-payment-link size="sm" variant="outline-primary" text="Crear Link" style="font-size: 0.875rem;" />
+                    <a href="{{ route('payment-links.index') }}" class="btn btn-outline-secondary" style="font-size: 0.875rem; text-align: center;">
+                        <i class="fas fa-chart-bar"></i>
+                        Ver Estadísticas
+                    </a>
+                </div>
+            </div>
+        </div>
+
         <!-- Booking Status -->
         @if($user->booking_enabled)
         <div class="card">
@@ -357,6 +401,9 @@
         </div>
     </div>
 </div>
+<!-- Incluir componente modal -->
+<x-modals.create-payment-link />
+
 @endsection
 
 @push('styles')
@@ -427,17 +474,20 @@
 document.addEventListener('DOMContentLoaded', function() {
     @if($user->role === 'doctor')
     loadPaymentMethodsSummary();
+    loadPaymentLinksStats();
     @endif
 });
 
 async function loadPaymentMethodsSummary() {
     try {
         const response = await fetch('/api/payment-methods', {
+            method: 'GET',
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
         });
 
         if (!response.ok) throw new Error('Error al cargar métodos de pago');
@@ -551,6 +601,40 @@ function getMethodName(type) {
 
 function isManualPayment(type) {
     return ['pago_movil', 'binance_pay'].includes(type);
+}
+
+async function loadPaymentLinksStats() {
+    try {
+        const response = await fetch('/api/payment-links/stats', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        });
+
+        if (!response.ok) throw new Error('Error al cargar estadísticas de links');
+
+        const data = await response.json();
+        renderPaymentLinksStats(data.data);
+    } catch (error) {
+        console.error('Error:', error);
+        renderPaymentLinksStatsError();
+    }
+}
+
+function renderPaymentLinksStats(stats) {
+    document.getElementById('total-links').textContent = stats.total || 0;
+    document.getElementById('active-links').textContent = stats.active || 0;
+    document.getElementById('used-links').textContent = stats.used || 0;
+}
+
+function renderPaymentLinksStatsError() {
+    document.getElementById('total-links').textContent = '-';
+    document.getElementById('active-links').textContent = '-';
+    document.getElementById('used-links').textContent = '-';
 }
 
 async function enableBookingFromProfile() {

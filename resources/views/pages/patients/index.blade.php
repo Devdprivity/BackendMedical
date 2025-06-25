@@ -227,6 +227,66 @@
     color: var(--dark);
 }
 
+.actions-menu {
+    position: fixed;
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15), 0 4px 6px rgba(0, 0, 0, 0.05);
+    z-index: 9999;
+    min-width: 200px;
+    overflow: hidden;
+    display: none;
+    backdrop-filter: blur(10px);
+    animation: fadeInScale 0.15s ease-out;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.action-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    color: var(--dark);
+    text-decoration: none;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.action-item:hover {
+    background: var(--gray-100);
+    color: var(--primary);
+}
+
+.action-item.danger {
+    color: var(--danger);
+}
+
+.action-item.danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+.action-item i {
+    width: 16px;
+    text-align: center;
+}
+
 .pagination {
     display: flex;
     justify-content: center;
@@ -412,11 +472,11 @@ function renderPatientsTable(patients) {
                         <td data-label="Paciente">
                             <div class="patient-info">
                                 <div class="patient-avatar" style="background: ${getPatientColor(patient.id)};">
-                                    ${getPatientInitials(patient.first_name, patient.last_name)}
+                                    ${getPatientInitials(patient.name)}
                                 </div>
                                 <div class="patient-details">
-                                    <h4>${patient.first_name || 'N/A'} ${patient.last_name || ''}</h4>
-                                    <p>ID: ${patient.identification_number || patient.id}</p>
+                                    <h4>${patient.name || 'N/A'}</h4>
+                                    <p>DNI: ${patient.dni || patient.id}</p>
                                 </div>
                             </div>
                         </td>
@@ -427,7 +487,7 @@ function renderPatientsTable(patients) {
                             </div>
                         </td>
                         <td data-label="Edad">
-                            <span style="font-weight: 500;">${calculateAge(patient.date_of_birth) || 'N/A'} años</span>
+                            <span style="font-weight: 500;">${calculateAge(patient.birth_date) || 'N/A'}</span>
                         </td>
                         <td data-label="Tipo de Sangre">
                             <span style="font-weight: 500; color: var(--accent);">${patient.blood_type || 'N/A'}</span>
@@ -444,9 +504,31 @@ function renderPatientsTable(patients) {
                         </td>
                         <td data-label="Acciones">
                             <div class="actions-dropdown">
-                                <button class="actions-btn" onclick="showPatientActions(${patient.id})">
+                                <button class="actions-btn" onclick="toggleActionsMenu(${patient.id}, this)">
                                     <i class="fas fa-ellipsis-v"></i>
                                 </button>
+                                <div class="actions-menu" id="actionsMenu${patient.id}" style="display: none;">
+                                    <a href="/patients/${patient.id}" class="action-item">
+                                        <i class="fas fa-eye"></i>
+                                        Ver Detalles
+                                    </a>
+                                    <button class="action-item" onclick="editPatient(${patient.id})">
+                                        <i class="fas fa-edit"></i>
+                                        Editar
+                                    </button>
+                                    <button class="action-item" onclick="scheduleAppointment(${patient.id})">
+                                        <i class="fas fa-calendar-plus"></i>
+                                        Programar Cita
+                                    </button>
+                                    <button class="action-item" onclick="viewMedicalHistory(${patient.id})">
+                                        <i class="fas fa-file-medical"></i>
+                                        Historial Médico
+                                    </button>
+                                    <button class="action-item danger" onclick="deletePatient(${patient.id}, '${patient.name}')">
+                                        <i class="fas fa-trash"></i>
+                                        Eliminar
+                                    </button>
+                                </div>
                             </div>
                         </td>
                     </tr>
@@ -531,16 +613,101 @@ function exportPatients() {
     alert('Función de exportación en desarrollo');
 }
 
-function showPatientActions(patientId) {
-    // Implementar menú de acciones
-    const actions = [
-        `Ver perfil: /patients/${patientId}`,
-        `Editar información`,
-        `Programar cita`,
-        `Ver historial médico`,
-        `Generar reporte`
-    ];
-    alert(actions.join('\n'));
+// Toggle actions menu
+function toggleActionsMenu(patientId, buttonElement) {
+    const menu = document.getElementById(`actionsMenu${patientId}`);
+    const isVisible = menu.style.display === 'block';
+    
+    // Hide all other menus
+    document.querySelectorAll('.actions-menu').forEach(m => m.style.display = 'none');
+    
+    if (!isVisible) {
+        // Calculate position relative to the button
+        const rect = buttonElement.getBoundingClientRect();
+        const menuWidth = 200; // min-width from CSS
+        
+        // Position menu to the left of the button if there's not enough space on the right
+        let left = rect.right + 5;
+        if (left + menuWidth > window.innerWidth) {
+            left = rect.left - menuWidth - 5;
+        }
+        
+        // Position menu below the button, but adjust if it goes off screen
+        let top = rect.bottom + 5;
+        if (top + 300 > window.innerHeight) { // Estimate menu height
+            top = rect.top - 250; // Position above
+        }
+        
+        menu.style.left = left + 'px';
+        menu.style.top = top + 'px';
+        menu.style.display = 'block';
+    }
+}
+
+// Hide menus when clicking outside
+document.addEventListener('click', function(event) {
+    if (!event.target.closest('.actions-dropdown')) {
+        document.querySelectorAll('.actions-menu').forEach(menu => {
+            menu.style.display = 'none';
+        });
+    }
+});
+
+// Hide menus when scrolling
+document.addEventListener('scroll', function() {
+    document.querySelectorAll('.actions-menu').forEach(menu => {
+        menu.style.display = 'none';
+    });
+});
+
+// Hide menus when window is resized
+window.addEventListener('resize', function() {
+    document.querySelectorAll('.actions-menu').forEach(menu => {
+        menu.style.display = 'none';
+    });
+});
+
+// CRUD Functions
+function editPatient(patientId) {
+    window.location.href = `/patients/${patientId}/edit`;
+}
+
+function scheduleAppointment(patientId) {
+    window.location.href = `/appointments/create?patient_id=${patientId}`;
+}
+
+function viewMedicalHistory(patientId) {
+    window.location.href = `/patients/${patientId}/medical-history`;
+}
+
+async function deletePatient(patientId, patientName) {
+    const confirmed = confirm(`¿Estás seguro de que deseas eliminar al paciente "${patientName}"?\n\nEsta acción no se puede deshacer.`);
+    
+    if (!confirmed) return;
+    
+    try {
+        const response = await fetch(`/api/patients/${patientId}`, {
+            method: 'DELETE',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            credentials: 'same-origin'
+        });
+        
+        if (response.ok) {
+            alert('Paciente eliminado exitosamente');
+            loadPatients(currentPage); // Reload current page
+            loadPatientsStats(); // Update stats
+        } else {
+            const errorData = await response.json();
+            alert(errorData.message || 'Error al eliminar el paciente');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error de conexión al eliminar el paciente');
+    }
 }
 
 function showErrorState() {
@@ -563,10 +730,17 @@ function getPatientColor(id) {
     return colors[id % colors.length];
 }
 
-function getPatientInitials(firstName, lastName) {
-    const first = firstName ? firstName.charAt(0).toUpperCase() : '';
-    const last = lastName ? lastName.charAt(0).toUpperCase() : '';
-    return first + last || 'P';
+function getPatientInitials(fullName) {
+    if (!fullName) return 'P';
+    
+    const names = fullName.trim().split(' ');
+    if (names.length === 1) {
+        return names[0].charAt(0).toUpperCase();
+    }
+    
+    const first = names[0].charAt(0).toUpperCase();
+    const last = names[names.length - 1].charAt(0).toUpperCase();
+    return first + last;
 }
 
 function calculateAge(birthDate) {

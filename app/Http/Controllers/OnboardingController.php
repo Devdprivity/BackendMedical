@@ -215,12 +215,68 @@ class OnboardingController extends Controller
     {
         $request->validate([
             'payment_methods' => 'required|array|min:1',
-            'payment_methods.*' => 'in:cash,transfer,card,paypal',
+            'payment_methods.*' => 'in:cash,transfer,card,paypal,pago_movil',
             'bank_account' => 'nullable|string|max:255',
-            'paypal_email' => 'nullable|email|max:255'
+            'paypal_email' => 'nullable|email|max:255',
+            'pago_movil_phone' => 'nullable|string|max:20',
+            'pago_movil_bank' => 'nullable|string|max:100'
         ]);
 
         $user = Auth::user();
+        
+        // Crear registros en la tabla payment_methods
+        foreach ($request->payment_methods as $index => $paymentType) {
+            $config = [];
+            $instructions = '';
+            
+            // Configurar según el tipo de pago
+            switch ($paymentType) {
+                case 'paypal':
+                    if ($request->paypal_email) {
+                        $config['email'] = $request->paypal_email;
+                        $instructions = "Envía el pago a: {$request->paypal_email}";
+                    }
+                    break;
+                    
+                case 'transfer':
+                    if ($request->bank_account) {
+                        $config['account'] = $request->bank_account;
+                        $instructions = "Transferencia bancaria a: {$request->bank_account}";
+                    }
+                    break;
+                    
+                case 'pago_movil':
+                    if ($request->pago_movil_phone && $request->pago_movil_bank) {
+                        $config['phone'] = $request->pago_movil_phone;
+                        $config['bank'] = $request->pago_movil_bank;
+                        $instructions = "Pago Móvil: {$request->pago_movil_phone} - {$request->pago_movil_bank}";
+                    }
+                    break;
+                    
+                case 'cash':
+                    $instructions = 'Pago en efectivo al momento de la consulta';
+                    break;
+                    
+                case 'card':
+                    $instructions = 'Pago con tarjeta de crédito/débito';
+                    break;
+            }
+            
+            // Crear el método de pago
+            \App\Models\PaymentMethod::create([
+                'user_id' => $user->id,
+                'clinic_id' => $user->clinic_id,
+                'type' => $paymentType,
+                'config' => $config,
+                'consultation_fee' => $user->consultation_fee ?? 30.00,
+                'currency' => 'USD',
+                'instructions' => $instructions,
+                'is_active' => true,
+                'order' => $index
+            ]);
+        }
+
+        // Actualizar campos del usuario para compatibilidad
         $user->update([
             'payment_methods' => json_encode($request->payment_methods),
             'bank_account' => $request->bank_account,

@@ -11,7 +11,9 @@ use App\Http\Controllers\Api\SurgeryController;
 use App\Http\Controllers\Api\MedicalExamController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MedicationController;
+use App\Http\Controllers\Api\PaymentMethodController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\PaymentLinkController;
 use App\Http\Controllers\BookingController;
 
 // Public booking API routes (no authentication required)
@@ -36,6 +38,7 @@ Route::prefix('booking')->name('booking.api.')->group(function () {
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/register', [AuthController::class, 'register']);
 
+// Routes for mobile API (using Sanctum tokens)
 Route::middleware('auth:sanctum')->group(function () {
     // Auth routes
     Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -96,4 +99,31 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/medications/expiring', [MedicationController::class, 'expiring']);
     Route::post('/medications/{medication}/movement', [MedicationController::class, 'addMovement']);
     Route::get('/medications/{medication}/movements', [MedicationController::class, 'movements']);
+
+
 });
+
+// Routes for web interface (using web session authentication)
+Route::middleware(['web', 'auth'])->group(function () {
+    // Payment Methods
+    Route::apiResource('payment-methods', PaymentMethodController::class);
+    Route::post('/payment-methods/order', [PaymentMethodController::class, 'updateOrder']);
+    Route::post('/payment-methods/{paymentMethod}/generate-link', [PaymentMethodController::class, 'generateLink']);
+    Route::get('/payment-methods/link/{token}', [PaymentMethodController::class, 'getPaymentLink']);
+    Route::get('/payment-methods/data/for-link', [PaymentMethodController::class, 'getPaymentLinkData']);
+    
+    // Payment Links
+    Route::get('/payment-links', [PaymentLinkController::class, 'getLinks']);
+    Route::post('/payment-links', [PaymentLinkController::class, 'store']);
+    Route::get('/payment-links/create-data', [PaymentLinkController::class, 'getCreateData']);
+    Route::get('/payment-links/stats', [PaymentLinkController::class, 'getStats']);
+    Route::get('/payment-links/{id}', [PaymentLinkController::class, 'show']);
+    Route::patch('/payment-links/{id}/deactivate', [PaymentLinkController::class, 'deactivate']);
+    Route::delete('/payment-links/{id}', [PaymentLinkController::class, 'destroy']);
+});
+
+// Public Payment Links Routes (no authentication required)
+Route::get('/payment-links/{token}/info', [PaymentLinkController::class, 'getPublicInfo']);
+Route::get('/payment-links/{token}/qr', [PaymentLinkController::class, 'generateQr']);
+Route::post('/payment-links/{token}/process', [PaymentLinkController::class, 'processPayment']);
+Route::post('/payment-links/{token}/confirm', [PaymentLinkController::class, 'confirmManualPayment']);

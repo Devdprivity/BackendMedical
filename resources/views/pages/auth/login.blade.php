@@ -715,7 +715,7 @@
             }
             
             try {
-                window.location.href = '/auth/google';
+            window.location.href = '/auth/google';
             } catch (error) {
                 console.error('Error redirecting to Google OAuth:', error);
                 showAlert('error', 'Error al conectar con Google. Por favor, intenta de nuevo.');

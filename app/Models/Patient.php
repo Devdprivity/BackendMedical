@@ -21,6 +21,7 @@ class Patient extends Model
         'email',
         'status',
         'preferred_clinic_id',
+        'created_by',
     ];
 
     protected $casts = [
@@ -33,6 +34,14 @@ class Patient extends Model
     public function preferredClinic()
     {
         return $this->belongsTo(Clinic::class, 'preferred_clinic_id');
+    }
+
+    /**
+     * Get the user who created this patient.
+     */
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     /**

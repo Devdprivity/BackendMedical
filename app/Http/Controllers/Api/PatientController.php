@@ -96,18 +96,16 @@ class PatientController extends Controller
             'phone' => 'required|string|max:20',
             'birth_date' => 'required|date',
             'gender' => 'required|in:male,female,other',
-            'identification_type' => 'required|in:cedula,passport,other',
-            'identification_number' => 'required|string|max:50|unique:patients',
+            'dni' => 'required|string|max:50|unique:patients',
             'address' => 'required|string',
-            'emergency_contact_name' => 'required|string|max:255',
-            'emergency_contact_phone' => 'required|string|max:20',
             'blood_type' => 'nullable|in:A+,A-,B+,B-,AB+,AB-,O+,O-',
-            'allergies' => 'nullable|string',
-            'medical_history' => 'nullable|string',
             'preferred_clinic_id' => 'nullable|exists:clinics,id',
         ]);
 
-        $patient = Patient::create($request->all());
+        $patientData = $request->all();
+        $patientData['created_by'] = auth()->id(); // Assign the current user as creator
+        
+        $patient = Patient::create($patientData);
 
         return response()->json([
             'success' => true,
@@ -287,12 +285,36 @@ class PatientController extends Controller
      */
     public function appointments(Patient $patient)
     {
+        // Check if user can access this patient
+        if (!$this->canUserAccessPatient($patient)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes permisos para ver las citas de este paciente'
+            ], 403);
+        }
+
         $appointments = $patient->appointments()
             ->with(['doctor', 'clinic'])
-            ->orderBy('date_time', 'desc')
-            ->paginate(15);
+            ->orderBy('appointment_date', 'desc')
+            ->orderBy('appointment_time', 'desc')
+            ->get()
+            ->map(function ($appointment) {
+                return [
+                    'id' => $appointment->id,
+                    'appointment_date' => $appointment->appointment_date,
+                    'appointment_time' => $appointment->appointment_time,
+                    'reason' => $appointment->reason,
+                    'status' => $appointment->status,
+                    'notes' => $appointment->notes,
+                    'doctor_name' => $appointment->doctor ? $appointment->doctor->name : 'No asignado',
+                    'clinic_name' => $appointment->clinic ? $appointment->clinic->name : 'No asignada',
+                ];
+            });
 
-        return response()->json($appointments);
+        return response()->json([
+            'success' => true,
+            'data' => $appointments
+        ]);
     }
 
     /**
@@ -384,8 +406,9 @@ class PatientController extends Controller
         switch ($user->role) {
             case 'doctor':
                 if (!$user->doctor) return false;
-                // Doctor can access patients they have treated
-                return $patient->appointments()->where('doctor_id', $user->doctor->id)->exists();
+                // Doctor can access patients they created or have treated
+                return $patient->created_by === $user->id || 
+                       $patient->appointments()->where('doctor_id', $user->doctor->id)->exists();
                 
             case 'nurse':
                 // Nurse can access patients with appointments in next 2 days

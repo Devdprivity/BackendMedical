@@ -22,6 +22,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Api\PaymentMethodController;
 use App\Http\Controllers\Api\AppointmentPaymentController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\PaymentLinkController;
 
 // Página de inicio
 Route::get('/', function () {
@@ -72,6 +73,76 @@ Route::get('/debug/google-config', function () {
     ]);
 })->name('debug.google-config');
 
+// Debug route for authentication status
+Route::get('/debug/auth-status', function () {
+    $user = auth()->user();
+    
+    if (!$user) {
+        return response()->json([
+            'authenticated' => false,
+            'message' => 'No user authenticated'
+        ]);
+    }
+    
+    $subscription = $user->currentSubscription;
+    
+    return response()->json([
+        'authenticated' => true,
+        'user' => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+        ],
+        'subscription' => $subscription ? [
+            'id' => $subscription->id,
+            'status' => $subscription->status,
+            'plan' => $subscription->plan->name,
+            'is_active' => $subscription->isActive(),
+            'is_trial' => $subscription->isTrial(),
+            'current_patients' => $subscription->current_patients_count,
+            'max_patients' => $subscription->plan->max_patients,
+            'can_add_patient' => $user->canPerformAction('add_patient'),
+        ] : null,
+        'roles_for_patients' => ['admin', 'doctor', 'nurse', 'receptionist'],
+        'user_role_allowed' => in_array($user->role, ['admin', 'doctor', 'nurse', 'receptionist']),
+    ]);
+})->name('debug.auth-status');
+
+// Debug route for middleware logic
+Route::get('/debug/middleware-test', function () {
+    $user = auth()->user();
+    
+    if (!$user) {
+        return response()->json(['error' => 'Not authenticated']);
+    }
+    
+    $subscription = $user->currentSubscription;
+    
+    if (!$subscription) {
+        return response()->json(['error' => 'No subscription']);
+    }
+    
+    $middlewareLogic = [
+        'isActive' => $subscription->isActive(),
+        'isTrial' => $subscription->isTrial(),
+        'notActive' => !$subscription->isActive(),
+        'notTrial' => !$subscription->isTrial(),
+        'shouldBlock' => (!$subscription->isActive() && !$subscription->isTrial()),
+        'shouldPass' => !(!$subscription->isActive() && !$subscription->isTrial()),
+        'canPerformAction' => $user->canPerformAction('add_patient'),
+        'subscription_details' => [
+            'status' => $subscription->status,
+            'trial_ends_at' => $subscription->trial_ends_at,
+            'ends_at' => $subscription->ends_at,
+            'current_patients_count' => $subscription->current_patients_count,
+            'max_patients' => $subscription->plan->max_patients,
+        ]
+    ];
+    
+    return response()->json($middlewareLogic);
+})->name('debug.middleware-test');
+
 // Registration Route
 Route::post('/auth/register', [GoogleController::class, 'register'])->name('auth.register');
 
@@ -96,12 +167,12 @@ Route::middleware('auth:web')->group(function () {
     Route::post('/api/subscription/check-limit', [SubscriptionController::class, 'checkLimit'])->name('api.subscription.check-limit');
     
     // Rutas de Pacientes - Acceso por roles
-    Route::middleware(['role:admin,doctor,nurse,receptionist'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
         Route::get('/patients', function () {
             return view('pages.patients.index');
         })->name('patients.index');
         
-        Route::middleware(['subscription.limits:add_patient'])->group(function () {
+        Route::middleware(['check.subscription.limits:add_patient'])->group(function () {
             Route::get('/patients/create', function () {
                 return view('pages.patients.create');
             })->name('patients.create');
@@ -110,10 +181,14 @@ Route::middleware('auth:web')->group(function () {
         Route::get('/patients/{id}', function ($id) {
             return view('pages.patients.show', compact('id'));
         })->name('patients.show');
+        
+        Route::get('/patients/{id}/edit', function ($id) {
+            return view('pages.patients.edit', compact('id'));
+        })->name('patients.edit');
     });
     
     // Rutas de Doctores - Solo admin puede gestionar doctores
-    Route::middleware(['role:admin'])->group(function () {
+    Route::middleware(['check.role:admin'])->group(function () {
         Route::get('/doctors', function () {
             return view('pages.doctors.index');
         })->name('doctors.index');
@@ -123,27 +198,27 @@ Route::middleware('auth:web')->group(function () {
         })->name('doctors.show');
     });
     
-    Route::middleware(['role:admin', 'subscription.limits:add_doctor'])->group(function () {
+    Route::middleware(['check.role:admin', 'check.subscription.limits:add_doctor'])->group(function () {
         Route::get('/doctors/create', function () {
             return view('pages.doctors.create');
         })->name('doctors.create');
     });
     
     // Rutas de Citas - Acceso por roles
-    Route::middleware(['role:admin,doctor,nurse,receptionist'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
         Route::get('/appointments', function () {
             return view('pages.appointments.index');
         })->name('appointments.index');
     });
     
-    Route::middleware(['role:admin,doctor,nurse,receptionist', 'subscription.limits:add_appointment'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,nurse,receptionist', 'check.subscription.limits:add_appointment'])->group(function () {
         Route::get('/appointments/create', function () {
             return view('pages.appointments.create');
         })->name('appointments.create');
     });
     
     // Rutas de Cirugías - Solo doctores y admin
-    Route::middleware(['role:admin,doctor'])->group(function () {
+    Route::middleware(['check.role:admin,doctor'])->group(function () {
         Route::get('/surgeries', function () {
             return view('pages.surgeries.index');
         })->name('surgeries.index');
@@ -154,7 +229,7 @@ Route::middleware('auth:web')->group(function () {
     });
     
     // Rutas de Medicamentos - Acceso por roles y suscripción
-    Route::middleware(['role:admin,doctor,nurse', 'subscription.feature:inventory_management'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,nurse', 'check.subscription.feature:inventory_management'])->group(function () {
         Route::get('/medications', function () {
             return view('pages.medications.index');
         })->name('medications.index');
@@ -165,7 +240,7 @@ Route::middleware('auth:web')->group(function () {
     });
     
     // Rutas de Facturas - Admin y contabilidad
-    Route::middleware(['role:admin,accountant'])->group(function () {
+    Route::middleware(['check.role:admin,accountant'])->group(function () {
         Route::get('/invoices', function () {
             return view('pages.invoices.index');
         })->name('invoices.index');
@@ -176,20 +251,20 @@ Route::middleware('auth:web')->group(function () {
     });
     
     // Rutas de Clínicas - Solo admin
-    Route::middleware(['role:admin'])->group(function () {
+    Route::middleware(['check.role:admin'])->group(function () {
         Route::get('/clinics', function () {
             return view('pages.clinics.index');
         })->name('clinics.index');
     });
     
-    Route::middleware(['role:admin', 'subscription.limits:add_location'])->group(function () {
+    Route::middleware(['check.role:admin', 'check.subscription.limits:add_location'])->group(function () {
         Route::get('/clinics/create', function () {
             return view('pages.clinics.create');
         })->name('clinics.create');
     });
     
     // Rutas de Exámenes - Acceso por roles
-    Route::middleware(['role:admin,doctor,lab_technician'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,lab_technician'])->group(function () {
         Route::get('/exams', function () {
             return view('pages.exams.index');
         })->name('exams.index');
@@ -204,7 +279,7 @@ Route::middleware('auth:web')->group(function () {
     });
     
     // Rutas de Métodos de Pago - Doctores y admin
-    Route::middleware(['role:admin,doctor'])->group(function () {
+    Route::middleware(['check.role:admin,doctor'])->group(function () {
         Route::get('/payment-methods', function () {
             return view('pages.payment-methods.index');
         })->name('payment-methods.index');
@@ -220,10 +295,13 @@ Route::middleware('auth:web')->group(function () {
         Route::get('/payment-methods/{id}/edit', function ($id) {
             return view('pages.payment-methods.edit', compact('id'));
         })->name('payment-methods.edit');
+
+        // Payment Links
+        Route::get('/payment-links', [PaymentLinkController::class, 'index'])->name('payment-links.index');
     });
     
     // Rutas de Administración de Usuarios - Solo admin
-    Route::middleware(['role:admin'])->group(function () {
+    Route::middleware(['check.role:admin'])->group(function () {
         Route::get('/users', function () {
             return view('pages.users.index');
         })->name('users.index');
@@ -308,6 +386,31 @@ Route::middleware('auth:web')->group(function () {
         return response()->json(Auth::user());
     })->name('api.user');
     
+    // Route to get user consultation fee for payment links
+    Route::get('/api/user/consultation-fee', function () {
+        $user = auth()->user();
+        return response()->json([
+            'success' => true,
+            'consultation_fee' => $user->consultation_fee ?? 0,
+            'currency' => $user->currency ?? 'USD'
+        ]);
+    })->name('api.user.consultation-fee');
+    
+    // Temporary debug route
+    Route::get('/debug/user-data', function () {
+        $user = auth()->user();
+        return response()->json([
+            'user_id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'consultation_fee' => $user->consultation_fee,
+            'currency' => $user->currency,
+            'onboarding_completed' => $user->onboarding_completed,
+            'all_user_fields' => $user->toArray()
+        ]);
+    })->name('debug.user-data');
+    
     // Test route for debugging authentication
     Route::get('/api/test-auth', function () {
         return response()->json([
@@ -324,37 +427,37 @@ Route::middleware('auth:web')->group(function () {
     Route::get('/api/dashboard/debug', [DashboardController::class, 'debug']);
     
     // Stats routes for each module
-    Route::middleware(['role:admin,doctor,nurse,receptionist'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
         Route::get('/api/patients/stats', [PatientController::class, 'stats']);
     });
     
-    Route::middleware(['role:admin,doctor,nurse,receptionist'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
         Route::get('/api/appointments/stats', [AppointmentController::class, 'stats']);
     });
     
-    Route::middleware(['role:admin,doctor'])->group(function () {
+    Route::middleware(['check.role:admin,doctor'])->group(function () {
         Route::get('/api/surgeries/stats', [SurgeryController::class, 'stats']);
     });
     
-    Route::middleware(['role:admin,doctor,lab_technician'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,lab_technician'])->group(function () {
         Route::get('/api/exams/stats', [MedicalExamController::class, 'stats']);
     });
     
-    Route::middleware(['role:admin,doctor,nurse', 'subscription.feature:inventory_management'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,nurse', 'check.subscription.feature:inventory_management'])->group(function () {
         Route::get('/api/medications/stats', [MedicationController::class, 'stats']);
     });
     
-    Route::middleware(['role:admin,accountant'])->group(function () {
+    Route::middleware(['check.role:admin,accountant'])->group(function () {
         Route::get('/api/invoices/stats', [InvoiceController::class, 'stats']);
     });
     
-    Route::middleware(['role:admin'])->group(function () {
+    Route::middleware(['check.role:admin'])->group(function () {
         Route::get('/api/clinics/stats', [ClinicController::class, 'stats']);
         Route::get('/api/doctors/stats', [DoctorController::class, 'stats']);
     });
     
     // Patients API - Role-based access
-    Route::middleware(['role:admin,doctor,nurse,receptionist'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
         Route::get('/api/patients', [PatientController::class, 'index']);
         Route::get('/api/patients/{patient}', [PatientController::class, 'show']);
         Route::put('/api/patients/{patient}', [PatientController::class, 'update']);
@@ -363,33 +466,33 @@ Route::middleware('auth:web')->group(function () {
         Route::get('/api/patients/{patient}/appointments', [PatientController::class, 'appointments']);
     });
     
-    Route::middleware(['role:admin,doctor,nurse,receptionist', 'subscription.limits:add_patient'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,nurse,receptionist', 'check.subscription.limits:add_patient'])->group(function () {
         Route::post('/api/patients', [PatientController::class, 'store']);
     });
     
-    Route::middleware(['role:admin,doctor'])->group(function () {
+    Route::middleware(['check.role:admin,doctor'])->group(function () {
         Route::delete('/api/patients/{patient}', [PatientController::class, 'destroy']);
     });
     
     // Doctors API - Admin only
-    Route::middleware(['role:admin'])->group(function () {
+    Route::middleware(['check.role:admin'])->group(function () {
         Route::get('/api/doctors', [DoctorController::class, 'index']);
         Route::get('/api/doctors/{doctor}', [DoctorController::class, 'show']);
         Route::put('/api/doctors/{doctor}', [DoctorController::class, 'update']);
         Route::delete('/api/doctors/{doctor}', [DoctorController::class, 'destroy']);
     });
     
-    Route::middleware(['role:admin', 'subscription.limits:add_doctor'])->group(function () {
+    Route::middleware(['check.role:admin', 'check.subscription.limits:add_doctor'])->group(function () {
         Route::post('/api/doctors', [DoctorController::class, 'store']);
     });
     
     // Basic doctors list for filters (available to all medical staff)
-    Route::middleware(['role:admin,doctor,nurse,receptionist'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
         Route::get('/api/doctors/list', [DoctorController::class, 'basicList']);
     });
     
     // Appointments API - Role-based access
-    Route::middleware(['role:admin,doctor,nurse,receptionist'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
         Route::get('/api/appointments', [AppointmentController::class, 'index']);
         Route::get('/api/appointments/{appointment}', [AppointmentController::class, 'show']);
         Route::put('/api/appointments/{appointment}', [AppointmentController::class, 'update']);
@@ -399,16 +502,16 @@ Route::middleware('auth:web')->group(function () {
         Route::get('/api/appointments/available-slots', [AppointmentController::class, 'getAvailableSlots']);
     });
     
-    Route::middleware(['role:admin,doctor,nurse,receptionist', 'subscription.limits:add_appointment'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,nurse,receptionist', 'check.subscription.limits:add_appointment'])->group(function () {
         Route::post('/api/appointments', [AppointmentController::class, 'store']);
     });
     
-    Route::middleware(['role:admin,doctor'])->group(function () {
+    Route::middleware(['check.role:admin,doctor'])->group(function () {
         Route::delete('/api/appointments/{appointment}', [AppointmentController::class, 'destroy']);
     });
     
     // Surgeries API - Doctors and admin only
-    Route::middleware(['role:admin,doctor'])->group(function () {
+    Route::middleware(['check.role:admin,doctor'])->group(function () {
         Route::get('/api/surgeries', [SurgeryController::class, 'index']);
         Route::post('/api/surgeries', [SurgeryController::class, 'store']);
         Route::get('/api/surgeries/{surgery}', [SurgeryController::class, 'show']);
@@ -417,7 +520,7 @@ Route::middleware('auth:web')->group(function () {
     });
     
     // Medications API - Medical staff with subscription check
-    Route::middleware(['role:admin,doctor,nurse', 'subscription.feature:inventory_management'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,nurse', 'check.subscription.feature:inventory_management'])->group(function () {
         Route::get('/api/medications', [MedicationController::class, 'index']);
         Route::post('/api/medications', [MedicationController::class, 'store']);
         Route::get('/api/medications/{medication}', [MedicationController::class, 'show']);
@@ -426,7 +529,7 @@ Route::middleware('auth:web')->group(function () {
     });
     
     // Invoices API - Admin and accountant
-    Route::middleware(['role:admin,accountant'])->group(function () {
+    Route::middleware(['check.role:admin,accountant'])->group(function () {
         Route::get('/api/invoices', [InvoiceController::class, 'index']);
         Route::post('/api/invoices', [InvoiceController::class, 'store']);
         Route::get('/api/invoices/{invoice}', [InvoiceController::class, 'show']);
@@ -435,19 +538,19 @@ Route::middleware('auth:web')->group(function () {
     });
     
     // Clinics API - Admin only
-    Route::middleware(['role:admin'])->group(function () {
+    Route::middleware(['check.role:admin'])->group(function () {
         Route::get('/api/clinics', [ClinicController::class, 'index']);
         Route::get('/api/clinics/{clinic}', [ClinicController::class, 'show']);
         Route::put('/api/clinics/{clinic}', [ClinicController::class, 'update']);
         Route::delete('/api/clinics/{clinic}', [ClinicController::class, 'destroy']);
     });
     
-    Route::middleware(['role:admin', 'subscription.limits:add_location'])->group(function () {
+    Route::middleware(['check.role:admin', 'check.subscription.limits:add_location'])->group(function () {
         Route::post('/api/clinics', [ClinicController::class, 'store']);
     });
     
     // Exams API - Medical and lab staff
-    Route::middleware(['role:admin,doctor,lab_technician'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,lab_technician'])->group(function () {
         Route::get('/api/exams', [MedicalExamController::class, 'index']);
         Route::post('/api/exams', [MedicalExamController::class, 'store']);
         Route::get('/api/exams/{exam}', [MedicalExamController::class, 'show']);
@@ -457,7 +560,7 @@ Route::middleware('auth:web')->group(function () {
     });
     
     // User Management API routes - Admin only
-    Route::middleware(['role:admin'])->group(function () {
+    Route::middleware(['check.role:admin'])->group(function () {
         Route::get('/api/users/stats', [UserController::class, 'stats']);
         Route::get('/api/users/roles', [UserController::class, 'roles']);
         Route::get('/api/users', [UserController::class, 'index']);
@@ -470,18 +573,18 @@ Route::middleware('auth:web')->group(function () {
     });
     
     // Basic users list for filters (available to medical staff)
-    Route::middleware(['role:admin,doctor,nurse,receptionist'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
         Route::get('/api/users/basic', [UserController::class, 'basicList']);
     });
     
     // Treatments API - Medical staff
-    Route::middleware(['role:admin,doctor,nurse,receptionist'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
         Route::get('/api/treatments', [TreatmentController::class, 'index']);
         Route::get('/api/treatments/{treatment}', [TreatmentController::class, 'show']);
         Route::get('/api/treatments/stats', [TreatmentController::class, 'statistics']);
     });
     
-    Route::middleware(['role:admin,doctor'])->group(function () {
+    Route::middleware(['check.role:admin,doctor'])->group(function () {
         Route::post('/api/treatments', [TreatmentController::class, 'store']);
         Route::put('/api/treatments/{treatment}', [TreatmentController::class, 'update']);
         Route::delete('/api/treatments/{treatment}', [TreatmentController::class, 'destroy']);
@@ -494,7 +597,7 @@ Route::middleware('auth:web')->group(function () {
     });
     
     // Doctor-Patient Relationships API - Admin and doctors
-    Route::middleware(['role:admin,doctor'])->group(function () {
+    Route::middleware(['check.role:admin,doctor'])->group(function () {
         Route::get('/api/relationships', [DoctorPatientRelationshipController::class, 'index']);
         Route::post('/api/relationships', [DoctorPatientRelationshipController::class, 'store']);
         Route::get('/api/relationships/{relationship}', [DoctorPatientRelationshipController::class, 'show']);
@@ -513,21 +616,54 @@ Route::middleware('auth:web')->group(function () {
     // Enable booking - Available to all authenticated users (for their own profile)
     Route::post('/api/users/{user}/enable-booking', [UserController::class, 'enableBooking']);
     
-    // Payment Methods API - Doctors and admin
-    Route::middleware(['role:admin,doctor'])->group(function () {
+    // Payment Methods API - Role-based access
+    Route::middleware(['check.role:admin,doctor'])->group(function () {
         Route::get('/api/payment-methods', [PaymentMethodController::class, 'index']);
         Route::post('/api/payment-methods', [PaymentMethodController::class, 'store']);
         Route::get('/api/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'show']);
         Route::put('/api/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'update']);
         Route::delete('/api/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'destroy']);
-        Route::post('/api/payment-methods/update-order', [PaymentMethodController::class, 'updateOrder']);
+        Route::patch('/api/payment-methods/order', [PaymentMethodController::class, 'updateOrder']);
+        
+        // Payment link generation
+        Route::post('/api/payment-methods/generate-link', [PaymentMethodController::class, 'generatePaymentLink'])
+             ->middleware('check.payment.setup');
+        Route::get('/api/payment-methods/payment-data', [PaymentMethodController::class, 'getPaymentLinkData'])
+             ->middleware('check.payment.setup');
+        
+        // Get payment methods for specific doctor (public access)
+        Route::get('/api/doctors/{doctorId}/payment-methods', [PaymentMethodController::class, 'getDoctorPaymentMethods']);
     });
     
     // Public endpoint for getting doctor's payment methods
     Route::get('/api/doctors/{doctor}/payment-methods', [PaymentMethodController::class, 'getForDoctor']);
     
+    // Payment Links API - Role-based access
+    Route::middleware(['check.role:admin,doctor'])->group(function () {
+        Route::get('/api/payment-links', [PaymentLinkController::class, 'getLinks']);
+        Route::post('/api/payment-links', [PaymentLinkController::class, 'store']);
+        Route::get('/api/payment-links/create-data', [PaymentLinkController::class, 'getCreateData']);
+        Route::get('/api/payment-links/stats', [PaymentLinkController::class, 'getStats']);
+        Route::get('/api/payment-links/{id}', [PaymentLinkController::class, 'show']);
+        Route::post('/api/payment-links/{id}/deactivate', [PaymentLinkController::class, 'deactivate']);
+        Route::delete('/api/payment-links/{id}', [PaymentLinkController::class, 'destroy']);
+        Route::get('/api/payment-links/{id}/qr', [PaymentLinkController::class, 'generateQr']);
+    });
+
+// Public endpoint for payment links
+Route::get('/api/payment-links/{token}', [PaymentMethodController::class, 'getPaymentLink']);
+
+// Public Payment Links Routes (no authentication required)
+Route::get('/pay/{token}', [PaymentLinkController::class, 'showPublic'])->name('payment-link.show');
+Route::get('/pay/{token}/qr', [PaymentLinkController::class, 'generateQr'])->name('payment-link.qr');
+
+// Public API endpoints for payment processing (no authentication required)
+Route::post('/api/payment-links/{token}/confirm-manual', [PaymentLinkController::class, 'confirmManualPayment']);
+Route::post('/api/payment-links/{token}/process', [PaymentLinkController::class, 'processPayment']);
+Route::get('/api/payment-links/{token}/info', [PaymentLinkController::class, 'getPublicInfo']);
+    
     // Appointment Payments API - Admin and doctors
-    Route::middleware(['role:admin,doctor,nurse,receptionist'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
         Route::get('/api/appointment-payments', [AppointmentPaymentController::class, 'index']);
         Route::get('/api/appointment-payments/{payment}', [AppointmentPaymentController::class, 'show']);
         Route::post('/api/appointment-payments/{payment}/verify', [AppointmentPaymentController::class, 'verify']);
@@ -536,7 +672,7 @@ Route::middleware('auth:web')->group(function () {
     });
     
     // Payment link generation for appointments
-    Route::middleware(['role:admin,doctor,nurse,receptionist'])->group(function () {
+    Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
         Route::post('/api/appointments/{appointment}/generate-payment-link', [PaymentController::class, 'generateLink']);
     });
 });
@@ -587,7 +723,7 @@ Route::prefix('payments')->name('payments.')->group(function () {
 // Video Call Routes - Authenticated users only
 Route::middleware('auth:web')->group(function () {
     // Video call management - Doctors and admins
-    Route::middleware(['role:admin,doctor'])->group(function () {
+    Route::middleware(['check.role:admin,doctor'])->group(function () {
         Route::post('/api/appointments/{appointment}/video-call', [App\Http\Controllers\VideoCallController::class, 'create'])->name('video-calls.create');
         Route::post('/api/video-calls/{videoCall}/start', [App\Http\Controllers\VideoCallController::class, 'start'])->name('video-calls.start');
         Route::post('/api/video-calls/{videoCall}/end', [App\Http\Controllers\VideoCallController::class, 'end'])->name('video-calls.end');

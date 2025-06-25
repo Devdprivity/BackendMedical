@@ -11,20 +11,22 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware): void {
-        // Replace default CSRF middleware with custom one
-        $middleware->replace(
-            \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
-            \App\Http\Middleware\VerifyCsrfToken::class
-        );
+    ->withMiddleware(function (Middleware $middleware) {
+        // Global middleware
+        $middleware->web(append: [
+            \App\Http\Middleware\CheckOnboarding::class,
+        ]);
         
+        // Alias middleware
         $middleware->alias([
-            'role' => \App\Http\Middleware\CheckRole::class,
-            'subscription.limits' => \App\Http\Middleware\CheckSubscriptionLimits::class,
-            'subscription.feature' => \App\Http\Middleware\CheckSubscriptionFeature::class,
+            'check.role' => \App\Http\Middleware\CheckRole::class,
+            'check.subscription.feature' => \App\Http\Middleware\CheckSubscriptionFeature::class,
+            'check.subscription.limits' => \App\Http\Middleware\CheckSubscriptionLimits::class,
             'filter.user.data' => \App\Http\Middleware\FilterUserData::class,
+            'onboarding' => \App\Http\Middleware\CheckOnboarding::class,
+            'check.payment.setup' => \App\Http\Middleware\CheckPaymentSetup::class,
         ]);
     })
-    ->withExceptions(function (Exceptions $exceptions): void {
+    ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();

@@ -28,7 +28,7 @@ class GoogleController extends Controller
                 'current_url' => request()->getSchemeAndHttpHost()
             ]);
             
-            return Socialite::driver('google')->redirect();
+        return Socialite::driver('google')->redirect();
         } catch (\Exception $e) {
             \Log::error('Google OAuth redirect error: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
@@ -175,11 +175,20 @@ class GoogleController extends Controller
 
         Auth::login($user);
 
+        // Check if it's an API request
+        if ($request->expectsJson()) {
         return response()->json([
             'message' => 'Cuenta creada exitosamente',
             'user' => $user,
             'trial_days' => 7,
-        ]);
+                'redirect' => route('onboarding.index')
+            ]);
+        }
+
+        // Redirect to onboarding for new manual registrations
+        return redirect()->route('onboarding.index')->with('success', 
+            '¡Bienvenido a MediCare Pro! Vamos a configurar tu cuenta paso a paso.'
+        );
     }
 
     /**
