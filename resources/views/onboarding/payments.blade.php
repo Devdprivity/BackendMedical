@@ -57,28 +57,28 @@
                 </div>
                 
                 <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid var(--gray-200); border-radius: 8px;">
-                    <input type="checkbox" id="payment_card" name="payment_methods[]" value="card" 
-                           {{ in_array('card', $userPaymentMethods) ? 'checked' : '' }}
+                    <input type="checkbox" id="payment_stripe" name="payment_methods[]" value="stripe" 
+                           {{ in_array('stripe', $userPaymentMethods) ? 'checked' : '' }}
                            style="margin: 0;">
                     <div>
-                        <label for="payment_card" style="margin: 0; cursor: pointer; font-weight: 600;">
-                            <i class="fas fa-credit-card" style="color: var(--primary); margin-right: 0.5rem;"></i>
-                            Tarjeta
+                        <label for="payment_stripe" style="margin: 0; cursor: pointer; font-weight: 600;">
+                            <i class="fab fa-stripe" style="color: var(--primary); margin-right: 0.5rem;"></i>
+                            Stripe
                         </label>
-                        <p style="margin: 0; color: var(--gray-500); font-size: 0.8rem;">Tarjeta de crédito/débito</p>
+                        <p style="margin: 0; color: var(--gray-500); font-size: 0.8rem;">Tarjeta de crédito/débito vía Stripe</p>
                     </div>
                 </div>
                 
                 <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid var(--gray-200); border-radius: 8px;">
-                    <input type="checkbox" id="payment_transfer" name="payment_methods[]" value="transfer" 
-                           {{ in_array('transfer', $userPaymentMethods) ? 'checked' : '' }}
+                    <input type="checkbox" id="payment_binance_pay" name="payment_methods[]" value="binance_pay" 
+                           {{ in_array('binance_pay', $userPaymentMethods) ? 'checked' : '' }}
                            style="margin: 0;">
                     <div>
-                        <label for="payment_transfer" style="margin: 0; cursor: pointer; font-weight: 600;">
-                            <i class="fas fa-university" style="color: var(--secondary); margin-right: 0.5rem;"></i>
-                            Transferencia
+                        <label for="payment_binance_pay" style="margin: 0; cursor: pointer; font-weight: 600;">
+                            <i class="fab fa-bitcoin" style="color: var(--warning); margin-right: 0.5rem;"></i>
+                            Binance Pay
                         </label>
-                        <p style="margin: 0; color: var(--gray-500); font-size: 0.8rem;">Transferencia bancaria</p>
+                        <p style="margin: 0; color: var(--gray-500); font-size: 0.8rem;">Pagos con criptomonedas</p>
                     </div>
                 </div>
                 

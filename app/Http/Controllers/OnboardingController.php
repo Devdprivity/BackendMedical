@@ -215,7 +215,7 @@ class OnboardingController extends Controller
     {
         $request->validate([
             'payment_methods' => 'required|array|min:1',
-            'payment_methods.*' => 'in:cash,transfer,card,paypal,pago_movil',
+            'payment_methods.*' => 'in:cash,paypal,pago_movil,stripe,binance_pay',
             'bank_account' => 'nullable|string|max:255',
             'paypal_email' => 'nullable|email|max:255',
             'pago_movil_phone' => 'nullable|string|max:20',
@@ -238,13 +238,6 @@ class OnboardingController extends Controller
                     }
                     break;
                     
-                case 'transfer':
-                    if ($request->bank_account) {
-                        $config['account'] = $request->bank_account;
-                        $instructions = "Transferencia bancaria a: {$request->bank_account}";
-                    }
-                    break;
-                    
                 case 'pago_movil':
                     if ($request->pago_movil_phone && $request->pago_movil_bank) {
                         $config['phone'] = $request->pago_movil_phone;
@@ -257,8 +250,12 @@ class OnboardingController extends Controller
                     $instructions = 'Pago en efectivo al momento de la consulta';
                     break;
                     
-                case 'card':
-                    $instructions = 'Pago con tarjeta de crédito/débito';
+                case 'stripe':
+                    $instructions = 'Pago con tarjeta de crédito/débito vía Stripe';
+                    break;
+                    
+                case 'binance_pay':
+                    $instructions = 'Pago con criptomonedas vía Binance Pay';
                     break;
             }
             
