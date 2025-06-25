@@ -280,21 +280,21 @@ Route::middleware('auth:web')->group(function () {
     
     // Rutas de Métodos de Pago - Doctores y admin
     Route::middleware(['check.role:admin,doctor'])->group(function () {
-        Route::get('/payment-methods', function () {
-            return view('pages.payment-methods.index');
-        })->name('payment-methods.index');
-        
-        Route::get('/payment-methods/create', function () {
-            return view('pages.payment-methods.create');
-        })->name('payment-methods.create');
-        
-        Route::get('/payment-methods/{id}', function ($id) {
-            return view('pages.payment-methods.show', compact('id'));
-        })->name('payment-methods.show');
-        
-        Route::get('/payment-methods/{id}/edit', function ($id) {
-            return view('pages.payment-methods.edit', compact('id'));
-        })->name('payment-methods.edit');
+            Route::get('/payment-methods', function () {
+        return view('pages.payment-methods.index');
+    })->name('payment-methods.web.index');
+
+    Route::get('/payment-methods/create', function () {
+        return view('pages.payment-methods.create');
+    })->name('payment-methods.web.create');
+
+    Route::get('/payment-methods/{id}', function ($id) {
+        return view('pages.payment-methods.show', compact('id'));
+    })->name('payment-methods.web.show');
+
+    Route::get('/payment-methods/{id}/edit', function ($id) {
+        return view('pages.payment-methods.edit', compact('id'));
+    })->name('payment-methods.web.edit');
 
         // Payment Links
         Route::get('/payment-links', [PaymentLinkController::class, 'index'])->name('payment-links.index');
@@ -616,12 +616,7 @@ Route::middleware('auth:web')->group(function () {
     
     // Payment Methods API - Role-based access
     Route::middleware(['check.role:admin,doctor'])->group(function () {
-        Route::get('/api/payment-methods', [PaymentMethodController::class, 'index']);
-        Route::post('/api/payment-methods', [PaymentMethodController::class, 'store']);
-        Route::get('/api/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'show']);
-        Route::put('/api/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'update']);
-        Route::delete('/api/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'destroy']);
-        Route::patch('/api/payment-methods/order', [PaymentMethodController::class, 'updateOrder']);
+        // Payment methods API routes are handled in routes/api.php
         
         // Payment link generation
         Route::post('/api/payment-methods/generate-link', [PaymentMethodController::class, 'generatePaymentLink'])

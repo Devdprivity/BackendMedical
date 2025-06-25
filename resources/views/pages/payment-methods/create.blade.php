@@ -11,7 +11,7 @@
                 <div class="page-title-right">
                     <ol class="breadcrumb m-0">
                         <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('payment-methods.index') }}">Métodos de Pago</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('payment-methods.web.index') }}">Métodos de Pago</a></li>
                         <li class="breadcrumb-item active">Agregar</li>
                     </ol>
                 </div>
@@ -605,7 +605,7 @@ async function handleSubmit(e) {
         
         showAlert('Método de pago creado exitosamente', 'success');
         setTimeout(() => {
-            window.location.href = '{{ route("payment-methods.index") }}';
+            window.location.href = '{{ route("payment-methods.web.index") }}';
         }, 1500);
         
     } catch (error) {

@@ -11,7 +11,7 @@
                 <div class="page-title-right">
                     <ol class="breadcrumb m-0">
                         <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('payment-methods.index') }}">Métodos de Pago</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('payment-methods.web.index') }}">Métodos de Pago</a></li>
                         <li class="breadcrumb-item active">Editar</li>
                     </ol>
                 </div>
@@ -69,7 +69,7 @@
                         </div>
 
                         <div class="d-flex justify-content-between">
-                            <a href="{{ route('payment-methods.index') }}" class="btn btn-secondary">
+                            <a href="{{ route('payment-methods.web.index') }}" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left me-2"></i>Cancelar
                             </a>
                             <button type="submit" class="btn btn-primary">

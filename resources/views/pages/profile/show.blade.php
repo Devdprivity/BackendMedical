@@ -138,7 +138,7 @@
                         <i class="fas fa-credit-card"></i>
                         Métodos de Pago
                     </h3>
-                    <a href="{{ route('payment-methods.index') }}" class="btn btn-primary" style="font-size: 0.875rem; margin-left: auto;">
+                                            <a href="{{ route('payment-methods.web.index') }}" class="btn btn-primary" style="font-size: 0.875rem; margin-left: auto;">
                         <i class="fas fa-cog"></i>
                         Gestionar
                     </a>
@@ -153,11 +153,11 @@
                 
                 <!-- Quick Actions -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem;">
-                    <a href="{{ route('payment-methods.create') }}" class="btn btn-outline" style="font-size: 0.875rem; text-align: center;">
+                    <a href="{{ route('payment-methods.web.create') }}" class="btn btn-outline" style="font-size: 0.875rem; text-align: center;">
                         <i class="fas fa-plus"></i>
                         Agregar Método
                     </a>
-                    <a href="{{ route('payment-methods.index') }}" class="btn btn-outline" style="font-size: 0.875rem; text-align: center;">
+                                            <a href="{{ route('payment-methods.web.index') }}" class="btn btn-outline" style="font-size: 0.875rem; text-align: center;">
                         <i class="fas fa-list"></i>
                         Ver Todos
                     </a>

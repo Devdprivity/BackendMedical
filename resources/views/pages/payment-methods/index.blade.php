@@ -19,7 +19,7 @@
                     <i class="fas fa-sync-alt me-2"></i>
                     Actualizar
                 </button>
-                <a href="{{ route('payment-methods.create') }}" class="btn btn-primary">
+                <a href="{{ route('payment-methods.web.create') }}" class="btn btn-primary">
                     <i class="fas fa-plus me-2"></i>
                     Nuevo Método
                 </a>
@@ -858,7 +858,7 @@ function renderPaymentMethods() {
                 <i class="fas fa-credit-card"></i>
                 <h4>No hay métodos de pago configurados</h4>
                 <p>Agrega tu primer método de pago para comenzar a recibir pagos de tus pacientes.</p>
-                <a href="{{ route('payment-methods.create') }}" class="btn btn-primary btn-lg">
+                <a href="{{ route('payment-methods.web.create') }}" class="btn btn-primary btn-lg">
                     <i class="fas fa-plus me-2"></i>
                     Agregar Método de Pago
                 </a>
