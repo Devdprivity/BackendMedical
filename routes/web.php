@@ -455,7 +455,7 @@ Route::middleware('auth:web')->group(function () {
     
     // Patients API - Role-based access
     Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
-        Route::get('/api/patients/stats', [\App\Http\Controllers\Api\PatientController::class, 'stats']); // MUST be before {patient} route
+        Route::get('/api/dashboard/patients-statistics', [\App\Http\Controllers\Api\PatientController::class, 'stats']); // Completely separate path
         Route::get('/api/patients', [\App\Http\Controllers\Api\PatientController::class, 'index']);
         Route::get('/api/patients/{patient}', [\App\Http\Controllers\Api\PatientController::class, 'show']);
         Route::put('/api/patients/{patient}', [\App\Http\Controllers\Api\PatientController::class, 'update']);

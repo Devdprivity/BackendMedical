@@ -404,7 +404,7 @@ async function loadPatients(page = 1) {
 
 async function loadPatientsStats() {
     try {
-        const response = await fetch('/api/patients/stats', {
+        const response = await fetch('/api/dashboard/patients-statistics', {
             headers: {
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
