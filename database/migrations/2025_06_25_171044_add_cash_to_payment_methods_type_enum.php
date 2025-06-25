@@ -12,12 +12,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Para PostgreSQL necesitamos usar ALTER TYPE
+        // Para PostgreSQL necesitamos modificar la restricción CHECK
         if (DB::getDriverName() === 'pgsql') {
-            DB::statement("ALTER TYPE payment_methods_type_check DROP CONSTRAINT IF EXISTS payment_methods_type_check");
+            // Primero eliminar la restricción existente
             DB::statement("ALTER TABLE payment_methods DROP CONSTRAINT IF EXISTS payment_methods_type_check");
             
-            // Recrear la restricción con el nuevo valor
+            // Crear la nueva restricción con el valor 'cash' incluido
             DB::statement("ALTER TABLE payment_methods ADD CONSTRAINT payment_methods_type_check CHECK (type IN ('paypal', 'binance_pay', 'pago_movil', 'stripe', 'wepay', 'cash'))");
         } else {
             // Para MySQL
