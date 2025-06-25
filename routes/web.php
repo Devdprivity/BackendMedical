@@ -427,9 +427,6 @@ Route::middleware('auth:web')->group(function () {
     Route::get('/api/dashboard/debug', [DashboardController::class, 'debug']);
     
     // Stats routes for each module
-    Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
-        Route::get('/api/patients/stats', [PatientController::class, 'stats']);
-    });
     
     Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
         Route::get('/api/appointments/stats', [AppointmentController::class, 'stats']);
