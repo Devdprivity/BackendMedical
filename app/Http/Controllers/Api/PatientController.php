@@ -9,6 +9,7 @@ use App\Models\MedicalHistory;
 use App\Models\VitalSign;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use App\Models\Appointment;
 use App\Traits\FiltersUserData;
 
@@ -374,7 +375,18 @@ class PatientController extends Controller
                 $q->whereDate('date_time', today());
             })->count(),
             'with_allergies' => (clone $query)->whereHas('medicalHistory', function($q) {
-                $q->whereNotNull('allergies')->where('allergies', '!=', '[]')->where('allergies', '!=', '');
+                if (DB::getDriverName() === 'pgsql') {
+                    // PostgreSQL JSON handling
+                    $q->whereNotNull('allergies')
+                      ->whereRaw("allergies::text != '[]'")
+                      ->whereRaw("allergies::text != '\"\"'")
+                      ->whereRaw("allergies::text != 'null'");
+                } else {
+                    // MySQL handling
+                    $q->whereNotNull('allergies')
+                      ->where('allergies', '!=', '[]')
+                      ->where('allergies', '!=', '');
+                }
             })->count(),
             
             // Additional stats for backend compatibility
