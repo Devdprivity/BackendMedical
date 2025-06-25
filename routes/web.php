@@ -455,20 +455,21 @@ Route::middleware('auth:web')->group(function () {
     
     // Patients API - Role-based access
     Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
-        Route::get('/api/patients', [PatientController::class, 'index']);
-        Route::get('/api/patients/{patient}', [PatientController::class, 'show']);
-        Route::put('/api/patients/{patient}', [PatientController::class, 'update']);
+        Route::get('/api/patients/stats', [\App\Http\Controllers\Api\PatientController::class, 'stats']); // MUST be before {patient} route
+        Route::get('/api/patients', [\App\Http\Controllers\Api\PatientController::class, 'index']);
+        Route::get('/api/patients/{patient}', [\App\Http\Controllers\Api\PatientController::class, 'show']);
+        Route::put('/api/patients/{patient}', [\App\Http\Controllers\Api\PatientController::class, 'update']);
         
         // Patient related data
-        Route::get('/api/patients/{patient}/appointments', [PatientController::class, 'appointments']);
+        Route::get('/api/patients/{patient}/appointments', [\App\Http\Controllers\Api\PatientController::class, 'appointments']);
     });
     
     Route::middleware(['check.role:admin,doctor,nurse,receptionist', 'check.subscription.limits:add_patient'])->group(function () {
-        Route::post('/api/patients', [PatientController::class, 'store']);
+        Route::post('/api/patients', [\App\Http\Controllers\Api\PatientController::class, 'store']);
     });
     
     Route::middleware(['check.role:admin,doctor'])->group(function () {
-        Route::delete('/api/patients/{patient}', [PatientController::class, 'destroy']);
+        Route::delete('/api/patients/{patient}', [\App\Http\Controllers\Api\PatientController::class, 'destroy']);
     });
     
     // Doctors API - Admin only
