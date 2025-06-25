@@ -342,4 +342,85 @@ class VideoCallController extends Controller
             'message' => 'Sala de videollamada instantánea creada exitosamente'
         ]);
     }
+
+    /**
+     * Show video call room for public access (no authentication required)
+     */
+    public function showPublic(VideoCall $videoCall)
+    {
+        // Check if the video call is accessible to public
+        // For now, we'll allow access to instant calls and active appointment calls
+        if (!$videoCall->is_instant && $videoCall->status !== 'active') {
+            abort(404, 'Sala de videollamada no encontrada o no disponible');
+        }
+
+        // For appointment-based calls, check if they are currently active
+        if (!$videoCall->is_instant) {
+            $appointment = $videoCall->appointment;
+            if (!$appointment || !$appointment->canStartVideoCall()) {
+                abort(404, 'La videoconsulta no está disponible en este momento');
+            }
+        }
+
+        return view('video-calls.public-room', [
+            'videoCall' => $videoCall,
+            'appointment' => $videoCall->appointment,
+            'user' => null, // No authenticated user for public access
+            'isPublicAccess' => true
+        ]);
+    }
+
+    /**
+     * Join video call as guest (no authentication required)
+     */
+    public function joinAsGuest(Request $request, VideoCall $videoCall)
+    {
+        // Validate guest information
+        $request->validate([
+            'guest_name' => 'required|string|max:100',
+            'guest_email' => 'nullable|email|max:255'
+        ]);
+
+        // Check if the video call is accessible
+        if (!$videoCall->is_instant && $videoCall->status !== 'active') {
+            return response()->json(['error' => 'Sala de videollamada no disponible'], 404);
+        }
+
+        // For appointment-based calls, check timing
+        if (!$videoCall->is_instant) {
+            $appointment = $videoCall->appointment;
+            if (!$appointment || !$appointment->canStartVideoCall()) {
+                return response()->json([
+                    'error' => 'La videoconsulta no está disponible en este momento',
+                    'message' => 'Solo puedes unirte 15 minutos antes y hasta 60 minutos después de la hora programada'
+                ], 400);
+            }
+        }
+
+        // Add guest as participant
+        $videoCall->addParticipant([
+            'user_id' => null, // No user ID for guests
+            'name' => $request->guest_name,
+            'email' => $request->guest_email,
+            'role' => 'guest',
+            'type' => 'participant',
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent()
+        ]);
+
+        Log::info('Guest joined video call', [
+            'video_call_id' => $videoCall->id,
+            'guest_name' => $request->guest_name,
+            'guest_email' => $request->guest_email,
+            'ip_address' => $request->ip(),
+            'is_instant' => $videoCall->is_instant
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'video_call' => $videoCall->fresh(),
+            'join_url' => $videoCall->room_url,
+            'message' => 'Uniéndose a la videollamada como invitado'
+        ]);
+    }
 }

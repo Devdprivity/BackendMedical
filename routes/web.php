@@ -737,6 +737,13 @@ Route::prefix('payments')->name('payments.')->group(function () {
     Route::post('/webhook/stripe', [PaymentController::class, 'stripeWebhook'])->name('webhook.stripe');
 });
 
+// Public Video Call Routes (no authentication required for guests)
+Route::prefix('room')->name('video-calls.public.')->group(function () {
+    // Public access to video call rooms - Anyone with the link can join
+    Route::get('/{videoCall}', [App\Http\Controllers\VideoCallController::class, 'showPublic'])->name('show');
+    Route::post('/api/{videoCall}/join-guest', [App\Http\Controllers\VideoCallController::class, 'joinAsGuest'])->name('join-guest');
+});
+
 // Video Call Routes - Authenticated users only
 Route::middleware('auth:web')->group(function () {
     // Video call management - Doctors and admins
