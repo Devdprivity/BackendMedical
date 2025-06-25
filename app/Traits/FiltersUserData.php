@@ -47,59 +47,60 @@ trait FiltersUserData
      */
     protected function applyDoctorFilters(Builder $query, $user, string $entityType = null): Builder
     {
-        if (!$user->doctor) {
-            return $query->whereRaw('1 = 0'); // No doctor record = no access
-        }
-        
-        $doctorId = $user->doctor->id;
-        
         switch ($entityType) {
             case 'patients':
-                // Doctor sees patients from their clinic or patients they have treated
-                return $query->where(function($q) use ($doctorId, $user) {
-                    $q->whereHas('appointments', function($appointmentQuery) use ($doctorId) {
-                        $appointmentQuery->where('doctor_id', $doctorId);
-                    })
-                    ->orWhere('created_by', $user->id) // Patients created by this doctor
-                    ->orWhere(function($clinicQuery) use ($user) {
-                        if ($user->clinic_id) {
-                            $clinicQuery->where('preferred_clinic_id', $user->clinic_id);
-                        }
-                    });
-                });
+                // Doctor sees only patients they created
+                return $query->where('created_by', $user->id);
                 
             case 'appointments':
                 // Doctor sees only their appointments
-                return $query->where('doctor_id', $doctorId);
+                if (!$user->doctor) {
+                    return $query->whereRaw('1 = 0'); // No doctor record = no appointments
+                }
+                return $query->where('doctor_id', $user->doctor->id);
                 
             case 'surgeries':
                 // Doctor sees only surgeries where they are main surgeon
-                return $query->where('main_surgeon_id', $doctorId);
+                if (!$user->doctor) {
+                    return $query->whereRaw('1 = 0');
+                }
+                return $query->where('main_surgeon_id', $user->doctor->id);
                 
             case 'exams':
                 // Doctor sees only exams they requested
-                return $query->where('requesting_doctor_id', $doctorId);
+                if (!$user->doctor) {
+                    return $query->whereRaw('1 = 0');
+                }
+                return $query->where('requesting_doctor_id', $user->doctor->id);
                 
             case 'medications':
                 // Doctor sees medications they created or from their clinic
-                return $query->where(function($q) use ($doctorId, $user) {
-                    $q->where('created_by', $user->id)
-                      ->orWhere('clinic_id', $user->clinic_id);
+                return $query->where(function($q) use ($user) {
+                    $q->where('created_by', $user->id);
+                    if ($user->clinic_id) {
+                        $q->orWhere('clinic_id', $user->clinic_id);
+                    }
                 })->where('current_stock', '>', 0); // Only available medications
                 
             case 'treatments':
                 // Doctor sees only treatments they prescribed or for their patients
-                return $query->where(function($q) use ($doctorId) {
-                    $q->where('doctor_id', $doctorId)
-                      ->orWhereHas('patient.doctorRelationships', function($rel) use ($doctorId) {
-                          $rel->where('doctor_id', $doctorId)
+                if (!$user->doctor) {
+                    return $query->where('created_by', $user->id); // Fallback to created by user
+                }
+                return $query->where(function($q) use ($user) {
+                    $q->where('doctor_id', $user->doctor->id)
+                      ->orWhereHas('patient.doctorRelationships', function($rel) use ($user) {
+                          $rel->where('doctor_id', $user->doctor->id)
                               ->where('status', 'active');
                       });
                 });
                 
             case 'relationships':
                 // Doctor sees only their patient relationships
-                return $query->where('doctor_id', $doctorId);
+                if (!$user->doctor) {
+                    return $query->whereRaw('1 = 0');
+                }
+                return $query->where('doctor_id', $user->doctor->id);
                 
             default:
                 return $query;

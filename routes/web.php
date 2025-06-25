@@ -456,6 +456,33 @@ Route::middleware('auth:web')->group(function () {
     // Patients API - Role-based access
     Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
         Route::get('/api/dashboard/patients-statistics', [\App\Http\Controllers\Api\PatientController::class, 'stats']); // Completely separate path
+        
+        // Temporary diagnostic route
+        Route::get('/api/patients/debug', function () {
+            try {
+                $user = auth()->user();
+                $patientsCount = \App\Models\Patient::count();
+                $userPatientsCount = \App\Models\Patient::where('created_by', $user->id)->count();
+                
+                return response()->json([
+                    'success' => true,
+                    'user_id' => $user->id,
+                    'user_role' => $user->role,
+                    'total_patients_in_db' => $patientsCount,
+                    'user_patients' => $userPatientsCount,
+                    'user_clinic_id' => $user->clinic_id,
+                    'sample_patients' => \App\Models\Patient::take(3)->get(['id', 'name', 'created_by']),
+                    'environment' => app()->environment(),
+                ]);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
+        });
+        
         Route::get('/api/patients', [\App\Http\Controllers\Api\PatientController::class, 'index']);
         Route::get('/api/patients/{patient}', [\App\Http\Controllers\Api\PatientController::class, 'show']);
         Route::put('/api/patients/{patient}', [\App\Http\Controllers\Api\PatientController::class, 'update']);
