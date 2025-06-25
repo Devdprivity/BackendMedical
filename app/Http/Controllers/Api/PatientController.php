@@ -373,7 +373,9 @@ class PatientController extends Controller
             'with_appointments_today' => (clone $query)->whereHas('appointments', function($q) {
                 $q->whereDate('date_time', today());
             })->count(),
-            'with_allergies' => (clone $query)->whereNotNull('allergies')->where('allergies', '!=', '')->count(),
+            'with_allergies' => (clone $query)->whereHas('medicalHistory', function($q) {
+                $q->whereNotNull('allergies')->where('allergies', '!=', '[]')->where('allergies', '!=', '');
+            })->count(),
             
             // Additional stats for backend compatibility
             'total_patients' => $query->count(),
