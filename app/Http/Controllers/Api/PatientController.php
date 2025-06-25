@@ -367,6 +367,15 @@ class PatientController extends Controller
         $query = $this->applyUserFilters($query, request(), 'patients');
         
         $stats = [
+            // Fields expected by frontend
+            'total' => $query->count(),
+            'active' => (clone $query)->where('status', 'active')->count(),
+            'with_appointments_today' => (clone $query)->whereHas('appointments', function($q) {
+                $q->whereDate('date_time', today());
+            })->count(),
+            'with_allergies' => (clone $query)->whereNotNull('allergies')->where('allergies', '!=', '')->count(),
+            
+            // Additional stats for backend compatibility
             'total_patients' => $query->count(),
             'active_patients' => (clone $query)->where('status', 'active')->count(),
             'inactive_patients' => (clone $query)->where('status', 'inactive')->count(),
