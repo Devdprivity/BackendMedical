@@ -34,6 +34,7 @@ class PaymentMethod extends Model
         'pago_movil' => 'Pago Móvil',
         'stripe' => 'Stripe',
         'wepay' => 'WePay',
+        'cash' => 'Efectivo',
     ];
 
     // Monedas soportadas
@@ -107,7 +108,7 @@ class PaymentMethod extends Model
      */
     public function isManualPayment()
     {
-        return in_array($this->type, ['pago_movil', 'binance_pay']);
+        return in_array($this->type, ['pago_movil', 'binance_pay', 'cash']);
     }
 
     /**
