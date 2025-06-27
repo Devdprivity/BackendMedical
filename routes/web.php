@@ -584,11 +584,6 @@ Route::middleware('auth:web')->group(function () {
         Route::patch('/api/exams/{exam}/status', [MedicalExamController::class, 'updateStatus']);
     });
     
-    // Allow wider access for fetching user lists (for dropdowns etc.)
-    Route::middleware(['check.role:admin,doctor,receptionist'])->group(function () {
-        Route::get('/api/users', [UserController::class, 'index']);
-    });
-
     // User Management API routes - Admin only for modifications
     Route::middleware(['check.role:admin'])->group(function () {
         Route::get('/api/users/stats', [UserController::class, 'stats']);
@@ -600,8 +595,6 @@ Route::middleware('auth:web')->group(function () {
         Route::patch('/api/users/{user}/status', [UserController::class, 'updateStatus']);
         Route::patch('/api/users/{user}/password', [UserController::class, 'resetPassword']);
     });
-    
-    // Basic users list for filters (available to medical staff) - Moved to api.php
     
     // Treatments API - Medical staff
     Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
