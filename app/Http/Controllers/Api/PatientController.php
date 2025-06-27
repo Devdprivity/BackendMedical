@@ -31,10 +31,10 @@ class PatientController extends Controller
         }
 
         $query = Patient::query();
-        
+
         // Apply user-specific filters
         $query = $this->applyUserFilters($query, $request, 'patients');
-        
+
         // Apply subscription limits
         $query = $this->applySubscriptionLimits($query, 'patients');
 
@@ -103,10 +103,16 @@ class PatientController extends Controller
             'preferred_clinic_id' => 'nullable|exists:clinics,id',
         ]);
 
-        $patientData = $request->all();
+                $patientData = $request->all();
         $patientData['created_by'] = auth()->id(); // Assign the current user as creator
-        
+
         $patient = Patient::create($patientData);
+
+        // If the creator is a doctor, automatically create a doctor-patient relationship
+        $user = auth()->user();
+        if ($user->role === 'doctor' && $user->doctor) {
+            $user->doctor->createPatientRelationship($patient->id);
+        }
 
         return response()->json([
             'success' => true,
@@ -213,7 +219,7 @@ class PatientController extends Controller
     public function medicalHistory(Patient $patient)
     {
         $medicalHistory = $patient->medicalHistory;
-        
+
         if (!$medicalHistory) {
             return response()->json(['message' => 'No medical history found'], 404);
         }
@@ -363,10 +369,10 @@ class PatientController extends Controller
     {
         $user = auth()->user();
         $query = Patient::query();
-        
+
         // Apply user-specific filters
         $query = $this->applyUserFilters($query, request(), 'patients');
-        
+
         $stats = [
             // Fields expected by frontend
             'total' => $query->count(),
@@ -388,7 +394,7 @@ class PatientController extends Controller
                       ->where('allergies', '!=', '');
                 }
             })->count(),
-            
+
             // Additional stats for backend compatibility
             'total_patients' => $query->count(),
             'active_patients' => (clone $query)->where('status', 'active')->count(),
@@ -404,7 +410,7 @@ class PatientController extends Controller
         // Add role-specific information
         $stats['user_role'] = $user->role;
         $stats['is_admin'] = $user->role === 'admin';
-        
+
         if ($user->role === 'doctor' && $user->doctor) {
             $stats['doctor_name'] = $user->doctor->name;
             $stats['doctor_specialty'] = $user->doctor->specialty;
@@ -419,48 +425,46 @@ class PatientController extends Controller
     private function canUserAccessPatient(Patient $patient): bool
     {
         $user = auth()->user();
-        
+
         // Admin can access all patients
         if ($user->role === 'admin') {
             return true;
         }
-        
+
         // Apply role-specific access checks
         switch ($user->role) {
             case 'doctor':
-                // Check if user has a subscription and what type
-                $subscription = $user->currentSubscription;
-                
-                // If no subscription or free plan, doctor can access all patients
-                if (!$subscription || ($subscription->plan && $subscription->plan->slug === 'free')) {
-                    return true;
+                // Doctor can only access patients with whom they have an active doctor-patient relationship
+                if (!$user->doctor) {
+                    return false;
                 }
-                
-                // For paid plans, doctor can access patients they created or have treated
-                if (!$user->doctor) return false;
-                return $patient->created_by === $user->id || 
-                       $patient->appointments()->where('doctor_id', $user->doctor->id)->exists();
-                
+
+                return $patient->doctorRelationships()
+                    ->where('doctor_id', $user->doctor->id)
+                    ->where('status', 'active')
+                    ->current()
+                    ->exists();
+
             case 'nurse':
                 // Nurse can access patients with appointments in next 2 days
                 return $patient->appointments()
                     ->whereBetween('date_time', [now(), now()->addDays(2)])
                     ->exists();
-                    
+
             case 'receptionist':
                 // Receptionist can access all patients (for scheduling)
                 return true;
-                
+
             case 'lab_technician':
                 // Lab tech can access patients with pending exams
                 return $patient->medicalExams()
                     ->whereIn('status', ['scheduled', 'in_progress'])
                     ->exists();
-                    
+
             case 'accountant':
                 // Accountant can access patients with invoices
                 return $patient->invoices()->exists();
-                
+
             default:
                 return false;
         }
@@ -472,24 +476,24 @@ class PatientController extends Controller
     private function hideSensitiveData(array $patients): void
     {
         $user = auth()->user();
-        
+
         // Admin sees everything
         if ($user->role === 'admin') {
             return;
         }
-        
+
         foreach ($patients as $patient) {
             switch ($user->role) {
                 case 'receptionist':
                     // Hide medical information
                     $patient->makeHidden(['medical_history', 'allergies', 'blood_type']);
                     break;
-                    
+
                 case 'accountant':
                     // Hide medical information, show only billing-relevant data
                     $patient->makeHidden(['medical_history', 'allergies', 'blood_type', 'emergency_contact_name', 'emergency_contact_phone']);
                     break;
-                    
+
                 case 'lab_technician':
                     // Hide personal contact information
                     $patient->makeHidden(['emergency_contact_name', 'emergency_contact_phone', 'address']);
@@ -505,11 +509,11 @@ class PatientController extends Controller
     {
         $patients = $query->whereNotNull('birth_date')->get();
         if ($patients->isEmpty()) return 0;
-        
+
         $totalAge = $patients->sum(function($patient) {
             return now()->diffInYears($patient->birth_date);
         });
-        
+
         return round($totalAge / $patients->count(), 1);
     }
 
@@ -532,11 +536,11 @@ class PatientController extends Controller
     {
         $bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
         $distribution = [];
-        
+
         foreach ($bloodTypes as $type) {
             $distribution[$type] = (clone $query)->where('blood_type', $type)->count();
         }
-        
+
         return $distribution;
     }
 }

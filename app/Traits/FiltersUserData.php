@@ -13,35 +13,35 @@ trait FiltersUserData
     protected function applyUserFilters(Builder $query, Request $request, string $entityType = null): Builder
     {
         $user = auth()->user();
-        
+
         // Admin sees everything
         if ($user->role === 'admin') {
             return $query;
         }
-        
+
         // Apply role-specific filters
         switch ($user->role) {
             case 'doctor':
                 return $this->applyDoctorFilters($query, $user, $entityType);
-                
+
             case 'nurse':
                 return $this->applyNurseFilters($query, $user, $entityType);
-                
+
             case 'receptionist':
                 return $this->applyReceptionistFilters($query, $user, $entityType);
-                
+
             case 'lab_technician':
                 return $this->applyLabTechFilters($query, $user, $entityType);
-                
+
             case 'accountant':
                 return $this->applyAccountantFilters($query, $user, $entityType);
-                
+
             default:
                 // Unknown role - restrict to nothing
                 return $query->whereRaw('1 = 0');
         }
     }
-    
+
     /**
      * Apply doctor-specific filters
      */
@@ -49,45 +49,38 @@ trait FiltersUserData
     {
         switch ($entityType) {
             case 'patients':
-                // Check if user has a subscription and what type
-                $subscription = $user->currentSubscription;
-                
-                // If no subscription or free plan, doctor can see all patients (with subscription limits)
-                if (!$subscription || ($subscription->plan && $subscription->plan->slug === 'free')) {
-                    return $query; // Show all patients, subscription limits will be applied separately
+                // Doctor can only see patients with whom they have an active doctor-patient relationship
+                if (!$user->doctor) {
+                    return $query->whereRaw('1 = 0'); // No doctor record = no patients
                 }
-                
-                // For paid plans, doctor sees patients they created OR have treated
-                return $query->where(function($q) use ($user) {
-                    $q->where('created_by', $user->id);
-                    if ($user->doctor) {
-                        $q->orWhereHas('appointments', function($appointments) use ($user) {
-                            $appointments->where('doctor_id', $user->doctor->id);
-                        });
-                    }
+
+                return $query->whereHas('doctorRelationships', function($relationships) use ($user) {
+                    $relationships->where('doctor_id', $user->doctor->id)
+                                  ->where('status', 'active')
+                                  ->current();
                 });
-                
+
             case 'appointments':
                 // Doctor sees only their appointments
                 if (!$user->doctor) {
                     return $query->whereRaw('1 = 0'); // No doctor record = no appointments
                 }
                 return $query->where('doctor_id', $user->doctor->id);
-                
+
             case 'surgeries':
                 // Doctor sees only surgeries where they are main surgeon
                 if (!$user->doctor) {
                     return $query->whereRaw('1 = 0');
                 }
                 return $query->where('main_surgeon_id', $user->doctor->id);
-                
+
             case 'exams':
                 // Doctor sees only exams they requested
                 if (!$user->doctor) {
                     return $query->whereRaw('1 = 0');
                 }
                 return $query->where('requesting_doctor_id', $user->doctor->id);
-                
+
             case 'medications':
                 // Doctor sees medications they created or from their clinic
                 return $query->where(function($q) use ($user) {
@@ -96,7 +89,7 @@ trait FiltersUserData
                         $q->orWhere('clinic_id', $user->clinic_id);
                     }
                 })->where('current_stock', '>', 0); // Only available medications
-                
+
             case 'treatments':
                 // Doctor sees only treatments they prescribed or for their patients
                 if (!$user->doctor) {
@@ -109,19 +102,19 @@ trait FiltersUserData
                               ->where('status', 'active');
                       });
                 });
-                
+
             case 'relationships':
                 // Doctor sees only their patient relationships
                 if (!$user->doctor) {
                     return $query->whereRaw('1 = 0');
                 }
                 return $query->where('doctor_id', $user->doctor->id);
-                
+
             default:
                 return $query;
         }
     }
-    
+
     /**
      * Apply nurse-specific filters
      */
@@ -133,27 +126,27 @@ trait FiltersUserData
                 return $query->whereHas('appointments', function($q) {
                     $q->whereBetween('date_time', [now(), now()->addDays(2)]);
                 });
-                
+
             case 'appointments':
                 // Nurse sees appointments for today and tomorrow
                 return $query->whereBetween('date_time', [now()->startOfDay(), now()->addDay()->endOfDay()]);
-                
+
             case 'medications':
                 // Nurse sees medications from their clinic only
                 return $query->where('clinic_id', $user->clinic_id)
                            ->where('current_stock', '>', 0); // Only available medications
-                
+
             case 'treatments':
                 // Nurse sees treatments for patients with recent appointments
                 return $query->whereHas('patient.appointments', function($q) {
                     $q->whereBetween('date_time', [now()->subDays(7), now()->addDays(2)]);
                 });
-                
+
             default:
                 return $query->whereRaw('1 = 0'); // Restrict other entities
         }
     }
-    
+
     /**
      * Apply receptionist-specific filters
      */
@@ -163,19 +156,19 @@ trait FiltersUserData
             case 'patients':
                 // Receptionist sees all patients (for scheduling)
                 return $query;
-                
+
             case 'appointments':
                 // Receptionist sees appointments from 1 day ago to 7 days forward
                 return $query->whereBetween('date_time', [
                     now()->subDay()->startOfDay(),
                     now()->addDays(7)->endOfDay()
                 ]);
-                
+
             default:
                 return $query->whereRaw('1 = 0'); // Restrict other entities
         }
     }
-    
+
     /**
      * Apply lab technician-specific filters
      */
@@ -185,18 +178,18 @@ trait FiltersUserData
             case 'exams':
                 // Lab tech sees all exams (for processing)
                 return $query;
-                
+
             case 'patients':
                 // Lab tech sees patients with pending exams
                 return $query->whereHas('medicalExams', function($q) {
                     $q->whereIn('status', ['scheduled', 'in_progress']);
                 });
-                
+
             default:
                 return $query->whereRaw('1 = 0'); // Restrict other entities
         }
     }
-    
+
     /**
      * Apply accountant-specific filters
      */
@@ -206,41 +199,41 @@ trait FiltersUserData
             case 'invoices':
                 // Accountant sees all invoices
                 return $query;
-                
+
             case 'patients':
                 // Accountant sees patients with invoices
                 return $query->whereHas('invoices');
-                
+
             default:
                 return $query->whereRaw('1 = 0'); // Restrict other entities
         }
     }
-    
+
     /**
      * Check if user can perform action on entity
      */
     protected function canUserAccess(string $action, string $entityType): bool
     {
         $user = auth()->user();
-        
+
         // Admin can do everything
         if ($user->role === 'admin') {
             return true;
         }
-        
+
         // Check subscription restrictions for medications
         if ($entityType === 'medications') {
             $subscription = $user->currentSubscription;
             if (!$subscription || !$subscription->plan) {
                 return false; // No subscription = no access to medications
             }
-            
+
             // Check if plan has inventory_management feature
             if (!$subscription->plan->hasFeature('inventory_management')) {
                 return false; // Plan doesn't include medication management
             }
         }
-        
+
         $permissions = [
             'doctor' => [
                 'view' => ['patients', 'appointments', 'surgeries', 'exams', 'medications', 'treatments', 'relationships'],
@@ -273,22 +266,22 @@ trait FiltersUserData
                 'delete' => []
             ]
         ];
-        
+
         return in_array($entityType, $permissions[$user->role][$action] ?? []);
     }
-    
+
     /**
      * Apply subscription limits
      */
     protected function applySubscriptionLimits(Builder $query, string $entityType): Builder
     {
         $user = auth()->user();
-        
+
         // Admin bypasses subscription limits
         if ($user->role === 'admin') {
             return $query;
         }
-        
+
         $subscription = $user->currentSubscription;
         if (!$subscription) {
             // Free plan - very limited access
@@ -301,7 +294,7 @@ trait FiltersUserData
                     return $query->limit(3);
             }
         }
-        
+
         // Apply subscription-specific limits
         switch ($entityType) {
             case 'patients':
@@ -309,14 +302,14 @@ trait FiltersUserData
                     return $query->limit($subscription->patient_limit);
                 }
                 break;
-                
+
             case 'appointments':
                 if ($subscription->appointment_limit) {
                     return $query->limit($subscription->appointment_limit);
                 }
                 break;
         }
-        
+
         return $query;
     }
-} 
+}

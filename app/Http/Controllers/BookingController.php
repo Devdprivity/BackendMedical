@@ -197,7 +197,7 @@ class BookingController extends Controller
             }
 
             $doctors = $query->select(
-                'id', 'name', 'specialty', 'bio', 
+                'id', 'name', 'specialty', 'bio',
                 'consultation_fee', 'schedule_start', 'schedule_end', 'work_days'
             )->get();
 
@@ -285,9 +285,9 @@ class BookingController extends Controller
             $consultationDuration = $doctor->consultation_duration ?? 30;
             $breakStart = $doctor->break_start;
             $breakEnd = $doctor->break_end;
-            
+
             $dayOfWeek = strtolower(date('l', strtotime($date)));
-            
+
             if (!in_array($dayOfWeek, $workDays)) {
                 return response()->json([
                     'success' => true,
@@ -300,22 +300,22 @@ class BookingController extends Controller
             $start = strtotime($date . ' ' . $scheduleStart);
             $end = strtotime($date . ' ' . $scheduleEnd);
             $slotDuration = $consultationDuration * 60; // Convert minutes to seconds
-            
+
             for ($time = $start; $time < $end; $time += $slotDuration) {
                 $timeSlot = date('H:i', $time);
                 $timeSlotEnd = date('H:i', $time + $slotDuration);
-                
+
                 // Skip slots during break time
                 if ($breakStart && $breakEnd) {
                     $breakStartTime = strtotime($date . ' ' . $breakStart);
                     $breakEndTime = strtotime($date . ' ' . $breakEnd);
-                    
+
                     // Check if slot overlaps with break time
                     if ($time < $breakEndTime && ($time + $slotDuration) > $breakStartTime) {
                         continue;
                     }
                 }
-                
+
                 // Verificar si el slot está ocupado
                 $isOccupied = DB::table('appointments')
                     ->where('doctor_id', $doctorId)
@@ -323,7 +323,7 @@ class BookingController extends Controller
                     ->where('appointment_time', $timeSlot)
                     ->where('status', '!=', 'cancelled')
                     ->exists();
-                
+
                 if (!$isOccupied) {
                     $slots[] = [
                         'time' => $timeSlot,
@@ -394,11 +394,11 @@ class BookingController extends Controller
                 $doctorRecord = DB::table('doctors')
                     ->where('user_id', $user->id)
                     ->first();
-                
+
                 if (!$doctorRecord) {
                     // Crear registro en tabla doctors para el usuario
                     \Log::info('Creating doctor record for user');
-                    
+
                     $actualDoctorId = DB::table('doctors')->insertGetId([
                         'user_id' => $user->id,
                         'name' => $user->name,
@@ -420,7 +420,7 @@ class BookingController extends Controller
                 } else {
                     $actualDoctorId = $doctorRecord->id;
                 }
-                
+
                 \Log::info('Using doctor record', ['doctor_id' => $actualDoctorId]);
             } else {
                 // Si no es usuario, buscar en tabla de doctores (Plan Clínica)
@@ -428,10 +428,10 @@ class BookingController extends Controller
                     ->where('id', $request->doctor_id)
                     ->where('status', 'active')
                     ->first();
-                
+
                 $isDoctorUser = false;
                 $actualDoctorId = $doctor ? $doctor->id : null;
-                
+
                 \Log::info('Doctor search in doctors table', [
                     'found' => $doctor ? true : false
                 ]);
@@ -455,7 +455,7 @@ class BookingController extends Controller
             // For clinic doctors, implement basic availability check
             if ($isDoctorUser) {
                 \Log::info('Checking availability for user doctor');
-                
+
                 $appointmentController = new \App\Http\Controllers\Api\AppointmentController();
                 $availabilityRequest = new \Illuminate\Http\Request([
                     'doctor_id' => $request->doctor_id, // Use original user ID for availability check
@@ -477,7 +477,7 @@ class BookingController extends Controller
                 }
             } else {
                 \Log::info('Checking availability for clinic doctor');
-                
+
                 // Para doctores de clínica, verificación básica de disponibilidad
                 $isOccupied = DB::table('appointments')
                     ->where('doctor_id', $actualDoctorId)
@@ -485,7 +485,7 @@ class BookingController extends Controller
                     ->whereRaw('TIME(date_time) = ?', [$request->appointment_time . ':00'])
                     ->where('status', '!=', 'cancelled')
                     ->exists();
-                
+
                 if ($isOccupied) {
                     return response()->json([
                         'success' => false,
@@ -504,15 +504,15 @@ class BookingController extends Controller
 
             if (!$patient) {
                 \Log::info('Creating new patient');
-                
+
                 // Generate a temporary DNI if not provided (for public bookings)
                 $tempDni = 'PUB-' . time() . '-' . rand(1000, 9999);
-                
+
                 $patientId = DB::table('patients')->insertGetId([
                     'name' => $request->patient_name,
                     'dni' => $tempDni,
-                    'birth_date' => $request->patient_age ? 
-                        now()->subYears($request->patient_age)->format('Y-m-d') : 
+                    'birth_date' => $request->patient_age ?
+                        now()->subYears($request->patient_age)->format('Y-m-d') :
                         now()->subYears(30)->format('Y-m-d'), // Default age if not provided
                     'gender' => $request->patient_gender ?? 'other',
                     'address' => 'Dirección no especificada', // Default address for public bookings
@@ -522,7 +522,7 @@ class BookingController extends Controller
                     'created_at' => now(),
                     'updated_at' => now()
                 ]);
-                
+
                 \Log::info('Patient created', ['patient_id' => $patientId]);
             } else {
                 $patientId = $patient->id;
@@ -534,7 +534,7 @@ class BookingController extends Controller
             if ($isDoctorUser) {
                 // For user doctors, use default clinic or get from user profile if available
                 $clinicId = $user->clinic_id ?? 1;
-                
+
                 // Ensure the clinic exists, create default if needed
                 $clinicExists = DB::table('clinics')->where('id', $clinicId)->exists();
                 if (!$clinicExists) {
@@ -563,10 +563,10 @@ class BookingController extends Controller
 
             // Crear la cita
             $confirmationToken = \Illuminate\Support\Str::random(32);
-            
+
             // Combine date and time into datetime format
             $dateTime = $request->appointment_date . ' ' . $request->appointment_time . ':00';
-            
+
             $appointmentId = DB::table('appointments')->insertGetId([
                 'patient_id' => $patientId,
                 'doctor_id' => $actualDoctorId,
@@ -580,6 +580,12 @@ class BookingController extends Controller
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
+
+            // Ensure doctor-patient relationship exists for public bookings
+            $doctor = \App\Models\Doctor::find($actualDoctorId);
+            if ($doctor) {
+                $doctor->ensurePatientRelationship($patientId, 'consulting');
+            }
 
             \Log::info('Appointment created successfully', [
                 'appointment_id' => $appointmentId,
@@ -606,7 +612,7 @@ class BookingController extends Controller
                 'errors' => $e->errors(),
                 'request_data' => $request->all()
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Datos inválidos',
@@ -620,7 +626,7 @@ class BookingController extends Controller
                 'trace' => $e->getTraceAsString(),
                 'request_data' => $request->all()
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Error al crear la reserva: ' . $e->getMessage()
@@ -653,4 +659,4 @@ class BookingController extends Controller
 
         return view('public.booking.confirmation', compact('appointment', 'slug'));
     }
-} 
+}

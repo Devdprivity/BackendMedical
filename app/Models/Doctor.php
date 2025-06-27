@@ -174,7 +174,7 @@ class Doctor extends Model
                              ->active()
                              ->current()
                              ->first();
-        
+
         return $relationship && $relationship->hasPermission($permission);
     }
 
@@ -192,5 +192,39 @@ class Doctor extends Model
     public function todaysAppointments()
     {
         return $this->appointments()->whereDate('date_time', today());
+    }
+
+    /**
+     * Ensure doctor-patient relationship exists, create if not
+     */
+    public function ensurePatientRelationship($patientId, $relationshipType = 'primary')
+    {
+        $existingRelationship = $this->patientRelationships()
+            ->where('patient_id', $patientId)
+            ->where('status', 'active')
+            ->current()
+            ->first();
+
+        if (!$existingRelationship) {
+            return DoctorPatientRelationship::create([
+                'doctor_id' => $this->id,
+                'patient_id' => $patientId,
+                'clinic_id' => $this->user->clinic_id ?? null,
+                'relationship_type' => $relationshipType,
+                'started_at' => now()->toDateString(),
+                'status' => 'active',
+                'notes' => 'Relación creada automáticamente',
+            ]);
+        }
+
+        return $existingRelationship;
+    }
+
+    /**
+     * Create automatic relationship when doctor creates a patient
+     */
+    public function createPatientRelationship($patientId)
+    {
+        return $this->ensurePatientRelationship($patientId, 'primary');
     }
 }

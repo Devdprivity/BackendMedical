@@ -16,7 +16,7 @@ class AppointmentController extends Controller
     public function index(Request $request)
     {
         $query = Appointment::with(['patient', 'doctor', 'clinic', 'videoCall']);
-        
+
         // Non-admin users see limited appointment data
         $user = auth()->user();
         if ($user->role !== 'admin') {
@@ -92,13 +92,13 @@ class AppointmentController extends Controller
             $appointment->patient_name = $appointment->patient->name ?? $appointment->patient_name;
             $appointment->doctor_name = $appointment->doctor->name ?? 'No asignado';
             $appointment->patient_phone = $appointment->patient->phone ?? '';
-            
+
             // Include video call with formatted duration
             if ($appointment->videoCall) {
                 $appointment->video_call = $appointment->videoCall;
                 $appointment->video_call->formatted_duration = $appointment->videoCall->formatted_duration;
             }
-            
+
             return $appointment;
         });
 
@@ -111,7 +111,7 @@ class AppointmentController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = auth()->user();
-        
+
         // If user is not admin, set doctor_id to their own doctor record
         if ($user->role !== 'admin' && $user->role !== 'receptionist') {
             if ($user->role === 'doctor') {
@@ -123,7 +123,7 @@ class AppointmentController extends Controller
                 ], 403);
             }
         }
-        
+
         $request->validate([
             'patient_id' => 'required|exists:patients,id',
             'doctor_id' => 'required|exists:users,id',
@@ -180,6 +180,12 @@ class AppointmentController extends Controller
 
         $appointment = Appointment::create($appointmentData);
 
+        // Ensure doctor-patient relationship exists
+        $doctor = \App\Models\Doctor::find($request->doctor_id);
+        if ($doctor) {
+            $doctor->ensurePatientRelationship($request->patient_id, 'consulting');
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Cita creada exitosamente',
@@ -193,7 +199,7 @@ class AppointmentController extends Controller
     public function show($id): JsonResponse
     {
         $appointment = Appointment::findOrFail($id);
-        
+
         // Check if user can access this appointment
         $user = auth()->user();
         if ($user->role !== 'admin') {
@@ -204,7 +210,7 @@ class AppointmentController extends Controller
                 ], 403);
             }
         }
-        
+
         $appointment->load(['patient', 'doctor', 'clinic', 'videoCall']);
 
         // Add formatted fields for frontend compatibility
@@ -213,7 +219,7 @@ class AppointmentController extends Controller
         $appointment->patient_name = $appointment->patient->name ?? $appointment->patient_name;
         $appointment->doctor_name = $appointment->doctor->name ?? 'No asignado';
         $appointment->patient_phone = $appointment->patient->phone ?? '';
-        
+
         // Include video call with formatted duration
         if ($appointment->videoCall) {
             $appointment->video_call = $appointment->videoCall;
@@ -232,7 +238,7 @@ class AppointmentController extends Controller
     public function update(Request $request, $id): JsonResponse
     {
         $appointment = Appointment::findOrFail($id);
-        
+
         // Check if user can update this appointment
         $user = auth()->user();
         if ($user->role !== 'admin') {
@@ -245,7 +251,7 @@ class AppointmentController extends Controller
             // Non-admin users cannot change doctor_id
             $request->request->remove('doctor_id');
         }
-        
+
         $request->validate([
             'patient_id' => 'exists:patients,id',
             'doctor_id' => 'exists:doctors,id',
@@ -270,7 +276,7 @@ class AppointmentController extends Controller
                 ->where(function($query) use ($dateTime, $duration) {
                     $appointmentStart = $dateTime;
                     $appointmentEnd = date('Y-m-d H:i:s', strtotime($appointmentStart . ' +' . $duration . ' minutes'));
-                    
+
                     $query->whereBetween('date_time', [$appointmentStart, $appointmentEnd])
                         ->orWhere(function($q) use ($appointmentStart, $appointmentEnd) {
                             $q->where('date_time', '<=', $appointmentStart)
@@ -302,7 +308,7 @@ class AppointmentController extends Controller
     public function destroy($id): JsonResponse
     {
         $appointment = Appointment::findOrFail($id);
-        
+
         // Check if user can delete this appointment
         $user = auth()->user();
         if ($user->role !== 'admin') {
@@ -313,7 +319,7 @@ class AppointmentController extends Controller
                 ], 403);
             }
         }
-        
+
         $appointment->delete();
 
         return response()->json([
@@ -329,7 +335,7 @@ class AppointmentController extends Controller
     {
         $query = Appointment::with(['patient', 'doctor', 'clinic'])
             ->whereDate('date_time', today());
-            
+
         // If user is not admin, only show their own appointments
         $user = auth()->user();
         if ($user->role !== 'admin') {
@@ -382,7 +388,7 @@ class AppointmentController extends Controller
     {
         $user = auth()->user();
         $query = DB::table('appointments');
-        
+
         // Filter by user role
         if ($user->role === 'doctor') {
             $query->where('doctor_id', $user->id);
@@ -397,9 +403,9 @@ class AppointmentController extends Controller
             }
         }
         // Admin can see all stats
-        
+
         $today = now()->format('Y-m-d');
-        
+
         $stats = [
             'today' => (clone $query)->whereDate('appointment_date', $today)->count(),
             'completed' => (clone $query)->where('status', 'completed')->count(),
@@ -476,10 +482,10 @@ class AppointmentController extends Controller
                 'message' => 'El horario seleccionado no está disponible',
                 'conflict' => [
                     'appointment_id' => $conflictingAppointment->id,
-                    'patient_name' => $conflictingAppointment->patient ? 
-                        $conflictingAppointment->patient->first_name . ' ' . $conflictingAppointment->patient->last_name : 
+                    'patient_name' => $conflictingAppointment->patient ?
+                        $conflictingAppointment->patient->first_name . ' ' . $conflictingAppointment->patient->last_name :
                         'Paciente',
-                    'time' => $conflictingAppointment->appointment_time ?? 
+                    'time' => $conflictingAppointment->appointment_time ??
                         \Carbon\Carbon::parse($conflictingAppointment->date_time)->format('H:i')
                 ]
             ]);
@@ -490,7 +496,7 @@ class AppointmentController extends Controller
         if ($doctor && $doctor->work_days) {
             $dayOfWeek = strtolower(\Carbon\Carbon::parse($date)->format('l'));
             $workDays = json_decode($doctor->work_days, true) ?? [];
-            
+
             if (!in_array($dayOfWeek, $workDays)) {
                 return response()->json([
                     'available' => false,
@@ -501,7 +507,7 @@ class AppointmentController extends Controller
             // Check work hours
             $scheduleStart = $doctor->schedule_start ?? '08:00';
             $scheduleEnd = $doctor->schedule_end ?? '17:00';
-            
+
             if ($time < $scheduleStart || $time >= $scheduleEnd) {
                 return response()->json([
                     'available' => false,
@@ -540,7 +546,7 @@ class AppointmentController extends Controller
 
             // Check if doctor works on this day
             $dayOfWeek = strtolower(\Carbon\Carbon::parse($date)->format('l'));
-            
+
             // Safe JSON decode
             $workDays = [];
             try {
@@ -553,7 +559,7 @@ class AppointmentController extends Controller
             if (empty($workDays) || !is_array($workDays)) {
                 $workDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
             }
-            
+
             if (!in_array($dayOfWeek, $workDays)) {
                 return response()->json([
                     'success' => true,
@@ -569,13 +575,13 @@ class AppointmentController extends Controller
                 $startTime = \Carbon\Carbon::parse('08:00');
                 $endTime = \Carbon\Carbon::parse('17:00');
             }
-            
+
             $consultationDuration = intval($doctor->consultation_duration ?? 30);
-            
+
             // Safe break time parsing
             $breakStart = null;
             $breakEnd = null;
-            
+
             if ($doctor->break_start) {
                 try {
                     $breakStart = \Carbon\Carbon::parse($doctor->break_start);
@@ -583,7 +589,7 @@ class AppointmentController extends Controller
                     $breakStart = null;
                 }
             }
-            
+
             if ($doctor->break_end) {
                 try {
                     $breakEnd = \Carbon\Carbon::parse($doctor->break_end);
@@ -591,13 +597,13 @@ class AppointmentController extends Controller
                     $breakEnd = null;
                 }
             }
-            
+
             $slots = [];
 
             while ($startTime < $endTime) {
                 $slotTime = $startTime->format('H:i');
                 $slotEndTime = $startTime->copy()->addMinutes($consultationDuration);
-                
+
                 // Skip slots that overlap with break time
                 if ($breakStart && $breakEnd) {
                     // Check if slot overlaps with break time
@@ -606,7 +612,7 @@ class AppointmentController extends Controller
                         continue;
                     }
                 }
-                
+
                 // Check availability for this slot
                 try {
                     $availabilityRequest = new Request([
@@ -615,10 +621,10 @@ class AppointmentController extends Controller
                         'time' => $slotTime,
                         'duration' => $consultationDuration
                     ]);
-                    
+
                     $availabilityResponse = $this->checkAvailability($availabilityRequest);
                     $availabilityData = json_decode($availabilityResponse->getContent(), true);
-                    
+
                     if ($availabilityData && isset($availabilityData['available']) && $availabilityData['available']) {
                         $slots[] = [
                             'time' => $slotTime,
@@ -638,7 +644,7 @@ class AppointmentController extends Controller
                 'success' => true,
                 'data' => $slots
             ]);
-            
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
