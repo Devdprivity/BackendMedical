@@ -18,13 +18,11 @@ return new class extends Migration
         $this->createRelationshipsFromTreatments();
     }
 
-    /**
+        /**
      * Create relationships based on who created the patients
      */
     private function createRelationshipsFromPatientCreators(): void
     {
-        $this->command->info('Creating relationships from patient creators...');
-
         // Get patients created by doctors
         $patientsWithDoctorCreators = DB::table('patients')
             ->join('users', 'patients.created_by', '=', 'users.id')
@@ -56,17 +54,13 @@ return new class extends Migration
                 ]);
             }
         }
-
-        $this->command->info(sprintf('Created %d relationships from patient creators', $patientsWithDoctorCreators->count()));
     }
 
-    /**
+        /**
      * Create relationships based on existing appointments
      */
     private function createRelationshipsFromAppointments(): void
     {
-        $this->command->info('Creating relationships from appointments...');
-
         // Get unique doctor-patient pairs from appointments
         $appointmentPairs = DB::table('appointments')
             ->join('doctors', 'appointments.doctor_id', '=', 'doctors.id')
@@ -99,16 +93,17 @@ return new class extends Migration
                 ]);
             }
         }
-
-        $this->command->info(sprintf('Created %d relationships from appointments', $appointmentPairs->count()));
     }
 
-    /**
+        /**
      * Create relationships based on existing treatments
      */
     private function createRelationshipsFromTreatments(): void
     {
-        $this->command->info('Creating relationships from treatments...');
+        // Check if treatments table exists
+        if (!DB::getSchemaBuilder()->hasTable('treatments')) {
+            return;
+        }
 
         // Get unique doctor-patient pairs from treatments
         $treatmentPairs = DB::table('treatments')
@@ -142,8 +137,6 @@ return new class extends Migration
                 ]);
             }
         }
-
-        $this->command->info(sprintf('Created %d relationships from treatments', $treatmentPairs->count()));
     }
 
     /**
