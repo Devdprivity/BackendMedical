@@ -2202,8 +2202,8 @@ async function startVideoCall(videoCallId) {
 }
 
 function joinVideoCall(videoCallId) {
-    // Open video call room in new tab
-    window.open(`/video-calls/${videoCallId}`, '_blank');
+    // Open video call room in new tab (public access)
+    window.open(`/room/${videoCallId}`, '_blank');
 }
 
 async function endVideoCall(videoCallId) {
@@ -2758,7 +2758,7 @@ async function createInstantVideoCall() {
             document.getElementById('joinInstantCallBtn').style.display = 'block';
             
             // Fill in the details
-            document.getElementById('instantVideoCallUrl').value = window.location.origin + `/video-calls/${currentInstantVideoCall.id}`;
+            document.getElementById('instantVideoCallUrl').value = window.location.origin + `/room/${currentInstantVideoCall.id}`;
             document.getElementById('instantVideoCallRoomId').value = data.video_call.room_name;
             document.getElementById('instantVideoCallCreatedAt').textContent = formatDateTime(data.video_call.created_at);
             
@@ -2845,7 +2845,7 @@ function copyInstantVideoCallUrl() {
 function shareViaWhatsApp() {
     if (!currentInstantVideoCall) return;
     
-    const videoCallUrl = `${window.location.origin}/video-calls/${currentInstantVideoCall.id}`;
+    const videoCallUrl = `${window.location.origin}/room/${currentInstantVideoCall.id}`;
     
     const message = `🎥 Te invito a una videollamada médica
 
@@ -2869,7 +2869,7 @@ ${videoCallUrl}
 function shareViaEmail() {
     if (!currentInstantVideoCall) return;
     
-    const videoCallUrl = `${window.location.origin}/video-calls/${currentInstantVideoCall.id}`;
+    const videoCallUrl = `${window.location.origin}/room/${currentInstantVideoCall.id}`;
     
     const subject = `Invitación a videollamada médica - Dr. {{ auth()->user()->name }}`;
     const body = `Estimado/a paciente,
@@ -2909,7 +2909,7 @@ Sistema MediCare Pro - Videoconsultas Médicas Seguras`;
 function generateInstantQR() {
     if (!currentInstantVideoCall) return;
     
-    const videoCallUrl = `${window.location.origin}/video-calls/${currentInstantVideoCall.id}`;
+    const videoCallUrl = `${window.location.origin}/room/${currentInstantVideoCall.id}`;
     
     // Show loading toast
     showToast('Generando código QR...', 'info');
