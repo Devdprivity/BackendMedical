@@ -540,6 +540,11 @@ class AppointmentController extends Controller
         // Check if doctor works on this day
         $dayOfWeek = strtolower(\Carbon\Carbon::parse($date)->format('l'));
         $workDays = json_decode($doctor->work_days ?? '[]', true);
+
+        // If no work days are set, default to a standard work week
+        if (empty($workDays)) {
+            $workDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+        }
         
         if (!in_array($dayOfWeek, $workDays)) {
             return response()->json([
