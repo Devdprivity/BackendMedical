@@ -428,8 +428,16 @@ class PatientController extends Controller
         // Apply role-specific access checks
         switch ($user->role) {
             case 'doctor':
+                // Check if user has a subscription and what type
+                $subscription = $user->currentSubscription;
+                
+                // If no subscription or free plan, doctor can access all patients
+                if (!$subscription || ($subscription->plan && $subscription->plan->slug === 'free')) {
+                    return true;
+                }
+                
+                // For paid plans, doctor can access patients they created or have treated
                 if (!$user->doctor) return false;
-                // Doctor can access patients they created or have treated
                 return $patient->created_by === $user->id || 
                        $patient->appointments()->where('doctor_id', $user->doctor->id)->exists();
                 

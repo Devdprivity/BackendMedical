@@ -49,8 +49,23 @@ trait FiltersUserData
     {
         switch ($entityType) {
             case 'patients':
-                // Doctor sees only patients they created
-                return $query->where('created_by', $user->id);
+                // Check if user has a subscription and what type
+                $subscription = $user->currentSubscription;
+                
+                // If no subscription or free plan, doctor can see all patients (with subscription limits)
+                if (!$subscription || ($subscription->plan && $subscription->plan->slug === 'free')) {
+                    return $query; // Show all patients, subscription limits will be applied separately
+                }
+                
+                // For paid plans, doctor sees patients they created OR have treated
+                return $query->where(function($q) use ($user) {
+                    $q->where('created_by', $user->id);
+                    if ($user->doctor) {
+                        $q->orWhereHas('appointments', function($appointments) use ($user) {
+                            $appointments->where('doctor_id', $user->doctor->id);
+                        });
+                    }
+                });
                 
             case 'appointments':
                 // Doctor sees only their appointments

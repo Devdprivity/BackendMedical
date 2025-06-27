@@ -43,7 +43,7 @@
                     </select>
                     @elseif(auth()->user()->role === 'doctor')
                     <select id="doctor_id" name="doctor_id" class="form-control" required>
-                        <option value="{{ auth()->user()->id }}" selected>{{ auth()->user()->first_name }} {{ auth()->user()->last_name }}</option>
+                        <option value="{{ auth()->user()->id }}" selected>Dr. {{ auth()->user()->name }}</option>
                     </select>
                     @else
                     <select id="doctor_id" name="doctor_id" class="form-control" required>
@@ -271,6 +271,8 @@ let selectedDoctorId = null;
 let availableSlots = [];
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Initializing appointment creation form...');
+    
     document.getElementById('appointmentForm').addEventListener('submit', handleSubmit);
     document.getElementById('checkAvailabilityBtn').addEventListener('click', checkAvailability);
     
@@ -288,9 +290,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add listener for appointment time selection
     document.getElementById('appointment_time').addEventListener('change', resetAvailability);
     
-    // Load initial data
-    loadPatients();
-    loadDoctors();
+    // Load initial data with debug
+    console.log('🔄 Loading initial data...');
+    
+    // Run debug functions first
+    debugUserInfo().then(() => {
+        debugPatientLoad().then(() => {
+            loadPatients();
+        });
+        
+        debugDoctorLoad().then(() => {
+            loadDoctors();
+        });
+    });
 });
 
 async function loadPatients() {
@@ -312,7 +324,7 @@ async function loadPatients() {
             patients.forEach(patient => {
                 const option = document.createElement('option');
                 option.value = patient.id;
-                option.textContent = `${patient.first_name} ${patient.last_name} - ${patient.identification_number}`;
+                option.textContent = `${patient.name} - ${patient.identification_number || patient.dni || 'Sin ID'}`;
                 if (selectedPatientId && patient.id == selectedPatientId) {
                     option.selected = true;
                 }
@@ -348,7 +360,7 @@ async function loadDoctors() {
             doctors.forEach(doctor => {
                 const option = document.createElement('option');
                 option.value = doctor.id;
-                option.textContent = `Dr. ${doctor.first_name} ${doctor.last_name}`;
+                option.textContent = `Dr. ${doctor.name}`;
                 select.appendChild(option);
             });
         }
@@ -611,6 +623,83 @@ function resetAvailability() {
     document.querySelectorAll('.alert').forEach(alert => {
         alert.style.display = 'none';
     });
+}
+
+// Add debug functions
+async function debugUserInfo() {
+    try {
+        const response = await fetch('/debug/auth-status', {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('🔍 Debug - User Info:', data);
+            return data;
+        }
+    } catch (error) {
+        console.error('❌ Debug - Error getting user info:', error);
+    }
+}
+
+async function debugPatientLoad() {
+    console.log('🔍 Debug - Starting patient load...');
+    
+    const userInfo = await debugUserInfo();
+    
+    try {
+        const response = await fetch('/api/patients?per_page=1000', {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        });
+        
+        console.log('🔍 Debug - Patient API Response Status:', response.status);
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('🔍 Debug - Patient API Response:', data);
+            console.log('🔍 Debug - Patients found:', data.data?.data?.length || data.data?.length || 0);
+        } else {
+            const errorData = await response.text();
+            console.log('❌ Debug - Patient API Error:', errorData);
+        }
+    } catch (error) {
+        console.error('❌ Debug - Patient load error:', error);
+    }
+}
+
+async function debugDoctorLoad() {
+    console.log('🔍 Debug - Starting doctor load...');
+    
+    try {
+        const response = await fetch('/api/users?role=doctor&per_page=1000', {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        });
+        
+        console.log('🔍 Debug - Doctor API Response Status:', response.status);
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('🔍 Debug - Doctor API Response:', data);
+            console.log('🔍 Debug - Doctors found:', data.data?.data?.length || data.data?.length || 0);
+        } else {
+            const errorData = await response.text();
+            console.log('❌ Debug - Doctor API Error:', errorData);
+        }
+    } catch (error) {
+        console.error('❌ Debug - Doctor load error:', error);
+    }
 }
 </script>
 @endpush 

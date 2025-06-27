@@ -17,6 +17,45 @@ class UserController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = User::query();
+        $currentUser = auth()->user();
+
+        // Apply role-based filtering
+        if ($currentUser->role !== 'admin') {
+            // For doctors requesting doctor lists
+            if ($request->has('role') && $request->role === 'doctor') {
+                $subscription = $currentUser->currentSubscription;
+                
+                // If current user is doctor with free plan, only show themselves
+                if ($currentUser->role === 'doctor' && 
+                    (!$subscription || ($subscription->plan && $subscription->plan->slug === 'free'))) {
+                    $query->where('id', $currentUser->id);
+                } elseif ($currentUser->role === 'doctor') {
+                    // For paid plans, show doctors from same clinic or themselves
+                    $query->where(function($q) use ($currentUser) {
+                        $q->where('id', $currentUser->id);
+                        if ($currentUser->clinic_id) {
+                            $q->orWhere('clinic_id', $currentUser->clinic_id);
+                        }
+                    });
+                } else {
+                    // Non-doctors requesting doctor list - restrict based on their permissions
+                    if (!in_array($currentUser->role, ['admin', 'receptionist'])) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'No tienes permisos para ver la lista de doctores'
+                        ], 403);
+                    }
+                }
+            } else {
+                // For other user types, apply standard restrictions
+                if (!in_array($currentUser->role, ['admin'])) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No tienes permisos para ver usuarios'
+                    ], 403);
+                }
+            }
+        }
 
         // Filter by role
         if ($request->has('role')) {
@@ -26,6 +65,9 @@ class UserController extends Controller
         // Filter by status
         if ($request->has('status')) {
             $query->where('status', $request->status);
+        } else {
+            // Default to active users only
+            $query->where('status', 'active');
         }
 
         // Search by name or email
