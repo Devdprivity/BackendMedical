@@ -584,6 +584,17 @@ Route::middleware('auth:web')->group(function () {
         Route::patch('/api/exams/{exam}/status', [MedicalExamController::class, 'updateStatus']);
     });
     
+    // User listing with appropriate permissions
+    Route::middleware(['check.role:admin,doctor,receptionist'])->group(function () {
+        Route::get('/api/users', [UserController::class, 'index']);
+    });
+    
+    // Appointment available slots - accessible to medical staff
+    Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
+        Route::get('/api/appointments/available-slots', [AppointmentController::class, 'getAvailableSlots']);
+        Route::post('/api/appointments/check-availability', [AppointmentController::class, 'checkAvailability']);
+    });
+
     // User Management API routes - Admin only for modifications
     Route::middleware(['check.role:admin'])->group(function () {
         Route::get('/api/users/stats', [UserController::class, 'stats']);
