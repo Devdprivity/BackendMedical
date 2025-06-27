@@ -111,7 +111,26 @@ class PatientController extends Controller
         // If the creator is a doctor, automatically create a doctor-patient relationship
         $user = auth()->user();
         if ($user->role === 'doctor' && $user->doctor) {
-            $user->doctor->createPatientRelationship($patient->id);
+            try {
+                $relationship = $user->doctor->createPatientRelationship($patient->id);
+                \Log::info('Doctor-Patient relationship created', [
+                    'doctor_id' => $user->doctor->id,
+                    'patient_id' => $patient->id,
+                    'relationship_id' => $relationship->id ?? 'failed'
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Failed to create doctor-patient relationship', [
+                    'doctor_id' => $user->doctor->id,
+                    'patient_id' => $patient->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        } else {
+            \Log::warning('Doctor-Patient relationship not created', [
+                'user_role' => $user->role,
+                'has_doctor_record' => $user->doctor ? 'yes' : 'no',
+                'user_id' => $user->id
+            ]);
         }
 
         return response()->json([

@@ -206,18 +206,42 @@ class Doctor extends Model
             ->first();
 
         if (!$existingRelationship) {
-            return DoctorPatientRelationship::create([
+            // Get clinic_id safely
+            $user = $this->user()->first();
+            $clinicId = $user ? $user->clinic_id : null;
+
+            return \App\Models\DoctorPatientRelationship::create([
                 'doctor_id' => $this->id,
                 'patient_id' => $patientId,
-                'clinic_id' => $this->user->clinic_id ?? null,
+                'clinic_id' => $clinicId,
                 'relationship_type' => $relationshipType,
                 'started_at' => now()->toDateString(),
                 'status' => 'active',
                 'notes' => 'Relación creada automáticamente',
+                'permissions' => json_encode($this->getDefaultPermissions($relationshipType)),
             ]);
         }
 
         return $existingRelationship;
+    }
+
+    /**
+     * Get default permissions for relationship type
+     */
+    private function getDefaultPermissions($relationshipType)
+    {
+        switch ($relationshipType) {
+            case 'primary':
+                return ['view_history', 'prescribe', 'update_records', 'schedule_appointments', 'emergency_access'];
+            case 'consulting':
+                return ['view_history', 'prescribe', 'update_records'];
+            case 'specialist':
+                return ['view_history', 'prescribe', 'update_specialty_records'];
+            case 'emergency':
+                return ['view_history', 'emergency_prescribe', 'emergency_access'];
+            default:
+                return ['view_history'];
+        }
     }
 
     /**
