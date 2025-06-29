@@ -20,16 +20,16 @@ use App\Http\Controllers\BookingController;
 Route::prefix('booking')->name('booking.api.')->group(function () {
     // API para obtener información del médico/clínica
     Route::get('/{slug}/info', [BookingController::class, 'getProviderInfo'])->name('info');
-    
+
     // API para obtener sucursales (si es clínica)
     Route::get('/{slug}/locations', [BookingController::class, 'getLocations'])->name('locations');
-    
+
     // API para obtener médicos por sucursal y especialidad
     Route::get('/{slug}/doctors', [BookingController::class, 'getDoctors'])->name('doctors');
-    
+
     // API para obtener horarios disponibles
     Route::get('/{slug}/availability', [BookingController::class, 'getAvailability'])->name('availability');
-    
+
     // Crear reserva pública
     Route::post('/{slug}/reserve', [BookingController::class, 'createReservation'])->name('reserve');
 });
@@ -72,9 +72,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/patients/{patient}/exams', [PatientController::class, 'medicalExams']);
     Route::get('/patients/{patient}/invoices', [PatientController::class, 'invoices']);
 
-    // Appointments
+    // Appointments (API only - basic CRUD)
+    // IMPORTANT: Specific routes MUST come BEFORE apiResource to avoid model binding conflicts
+    Route::get('appointments/available-slots', [AppointmentController::class, 'getAvailableSlots'])->name('sanctum.appointments.available-slots');
+    Route::get('appointments/check-availability', [AppointmentController::class, 'checkAvailability'])->name('sanctum.appointments.check-availability');
+    Route::get('appointments/today', [AppointmentController::class, 'today'])->name('sanctum.appointments.today');
+
     Route::apiResource('appointments', AppointmentController::class);
-    Route::get('/appointments/today', [AppointmentController::class, 'today']);
     Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'updateStatus']);
 
     // Surgeries
@@ -104,19 +108,26 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Routes for web interface (using web session authentication)
-Route::middleware(['web', 'auth'])->group(function () {
+Route::middleware(['auth:web'])->group(function () {
     // Users - Basic list for filters (available to medical staff)
     Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
         Route::get('/users/basic', [App\Http\Controllers\Api\UserController::class, 'basicList']);
     });
-    
+
+    // Appointment functionality for web interface
+    Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
+        Route::get('appointments/available-slots', [AppointmentController::class, 'getAvailableSlots'])->name('api.appointments.available-slots');
+        Route::get('appointments/check-availability', [AppointmentController::class, 'checkAvailability'])->name('api.appointments.check-availability');
+        Route::get('appointments/today', [AppointmentController::class, 'today'])->name('api.appointments.today');
+    });
+
     // Payment Methods
     Route::apiResource('payment-methods', PaymentMethodController::class);
     Route::post('/payment-methods/order', [PaymentMethodController::class, 'updateOrder']);
     Route::post('/payment-methods/{paymentMethod}/generate-link', [PaymentMethodController::class, 'generateLink']);
     Route::get('/payment-methods/link/{token}', [PaymentMethodController::class, 'getPaymentLink']);
     Route::get('/payment-methods/data/for-link', [PaymentMethodController::class, 'getPaymentLinkData']);
-    
+
     // Payment Links
     Route::get('/payment-links', [PaymentLinkController::class, 'getLinks']);
     Route::post('/payment-links', [PaymentLinkController::class, 'store']);

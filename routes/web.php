@@ -209,6 +209,7 @@ Route::middleware('auth:web')->group(function () {
         Route::get('/appointments', function () {
             return view('pages.appointments.index');
         })->name('appointments.index');
+
     });
 
     Route::middleware(['check.role:admin,doctor,nurse,receptionist', 'check.subscription.limits:add_appointment'])->group(function () {
