@@ -62,10 +62,26 @@ class AuthController extends Controller
             'status' => 'active',
         ]);
 
+        // Crear registro específico del rol si es necesario
+        if ($request->role === 'doctor') {
+            Doctor::create([
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'specialty' => 'Medicina General', // Por defecto
+                'license_number' => 'DOC' . $user->id . time(),
+                'phone' => '+58414-000-0000', // Por defecto
+                'status' => 'active',
+                'experience_years' => 1,
+                'bio' => 'Doctor registrado en el sistema',
+                'rating' => 4.0
+            ]);
+        }
+
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
-            'user' => $user,
+            'user' => $user->load('doctor'),
             'token' => $token,
             'token_type' => 'Bearer',
             'requires_onboarding' => !($user->onboarding_completed ?? false),

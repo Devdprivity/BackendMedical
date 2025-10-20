@@ -8,7 +8,7 @@
     <div class="pricing-header">
         <div class="container">
             <h1 class="pricing-title">Elige el plan perfecto para tu práctica médica</h1>
-            <p class="pricing-subtitle">Comienza con una prueba gratuita de 7 días. Sin compromisos, cancela cuando quieras.</p>
+            <p class="pricing-subtitle">Comienza con una prueba gratuita de 1 hora. Sin compromisos, cancela cuando quieras.</p>
             
             <!-- Billing Toggle -->
             <div class="billing-toggle">
@@ -56,7 +56,7 @@
                 </div>
                 <div class="faq-item">
                     <h3 class="faq-question">¿Qué incluye la prueba gratuita?</h3>
-                    <p class="faq-answer">La prueba gratuita de 7 días incluye acceso completo a todas las funciones básicas: 1 doctor, hasta 50 pacientes y 100 citas por mes.</p>
+                    <p class="faq-answer">La prueba gratuita de 1 hora incluye acceso completo a todas las funciones básicas: 1 doctor, hasta 10 pacientes y 5 citas por mes.</p>
                 </div>
                 <div class="faq-item">
                     <h3 class="faq-question">¿Hay costos ocultos?</h3>
@@ -259,6 +259,28 @@
     background: rgba(6, 182, 212, 0.1);
     border-radius: 8px;
     text-align: center;
+    border: 1px solid rgba(6, 182, 212, 0.2);
+}
+
+.plan-card.trial-plan {
+    border: 2px solid #06b6d4;
+    position: relative;
+}
+
+.plan-card.trial-plan::before {
+    content: 'PRUEBA TEMPORAL';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #06b6d4, #0891b2);
+    color: white;
+    padding: 0.5rem 1.5rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    z-index: 10;
 }
 
 .plan-button.current-plan {
@@ -300,7 +322,7 @@
     color: white;
 }
 
-.plan-icon.free { background: linear-gradient(135deg, #10b981, #059669); }
+.plan-icon.free { background: linear-gradient(135deg, #06b6d4, #0891b2); }
 .plan-icon.doctor { background: linear-gradient(135deg, #667eea, #764ba2); }
 .plan-icon.small { background: linear-gradient(135deg, #f59e0b, #d97706); }
 .plan-icon.large { background: linear-gradient(135deg, #ef4444, #dc2626); }
@@ -601,7 +623,9 @@ function renderPlans() {
         
         if (isCurrentPlan) {
             if (userSubscription.status === 'trial') {
-                buttonText = `Tu Plan Actual (${userSubscription.trial_days_remaining || 0} días restantes)`;
+                const hoursRemaining = userSubscription.trial_hours_remaining || 0;
+                const timeText = hoursRemaining < 24 ? `${hoursRemaining} horas restantes` : `${userSubscription.trial_days_remaining || 0} días restantes`;
+                buttonText = `Tu Plan Actual (${timeText})`;
                 buttonClass = 'current-plan';
                 buttonDisabled = true;
             } else {
@@ -638,7 +662,7 @@ function renderPlans() {
         }
         
         return `
-            <div class="plan-card ${isPopular ? 'popular' : ''} ${isCurrentPlan ? 'current-plan-card' : ''}">
+            <div class="plan-card ${isPopular ? 'popular' : ''} ${isCurrentPlan ? 'current-plan-card' : ''} ${plan.is_free ? 'trial-plan' : ''}">
                 ${isCurrentPlan ? '<div class="current-plan-indicator">Tu Plan Actual</div>' : ''}
                 <div class="plan-header">
                     <div class="plan-icon ${plan.slug}">
@@ -655,7 +679,7 @@ function renderPlans() {
                     </div>
                     ${savings > 0 ? `<div class="plan-savings">Ahorra ${savings}%</div>` : ''}
                     ${isCurrentPlan && userSubscription.status === 'trial' ? 
-                        `<div class="trial-info">Prueba termina en ${userSubscription.trial_days_remaining || 0} días</div>` : ''}
+                        `<div class="trial-info">Prueba termina en ${userSubscription.trial_hours_remaining || 0} horas</div>` : ''}
                 </div>
                 
                 <div class="plan-features">
@@ -876,7 +900,7 @@ async function subscribeToPlan(planSlug) {
 
 function getPlanIcon(slug) {
     const icons = {
-        'free': 'fas fa-gift',
+        'free': 'fas fa-clock',
         'doctor': 'fas fa-user-md',
         'small_clinic': 'fas fa-clinic-medical',
         'large_clinic': 'fas fa-hospital',

@@ -81,8 +81,9 @@ class SubscriptionController extends Controller
         
         if ($subscription->isTrial()) {
             $data['trial_ends_at'] = $subscription->trial_ends_at;
+            $data['trial_hours_remaining'] = $subscription->trial_hours_remaining;
             $data['trial_days_remaining'] = $subscription->trial_days_remaining;
-            $data['message'] = "Tu prueba gratuita termina en {$subscription->trial_days_remaining} días.";
+            $data['message'] = "Tu prueba gratuita termina en {$subscription->trial_hours_remaining} horas.";
         } elseif ($subscription->isActive()) {
             $data['message'] = "Tu suscripción está activa hasta " . $subscription->ends_at->format('d/m/Y');
         } elseif ($subscription->isExpired()) {
@@ -180,7 +181,9 @@ class SubscriptionController extends Controller
             'status' => $plan->is_free ? 'trial' : 'active',
             'starts_at' => $startDate,
             'ends_at' => $endDate,
-            'trial_ends_at' => $plan->is_free ? $startDate->copy()->addDays($plan->trial_days) : null,
+            'trial_ends_at' => $plan->is_free ? 
+                ($plan->trial_days <= 1 ? $startDate->copy()->addHour() : $startDate->copy()->addDays($plan->trial_days)) : 
+                null,
             'billing_cycle' => $request->billing_cycle,
             'amount_paid' => $request->billing_cycle === 'yearly' ? $plan->price_yearly : $plan->price_monthly,
             'current_doctors_count' => 0,

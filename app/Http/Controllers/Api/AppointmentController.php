@@ -437,11 +437,30 @@ class AppointmentController extends Controller
             'exclude_appointment_id' => 'nullable|exists:appointments,id'
         ]);
 
-        $doctorId = $request->doctor_id;
+        $userId = $request->doctor_id; // This is actually the user_id
         $date = $request->date;
         $time = $request->time;
         $duration = $request->duration ?? 30;
         $excludeId = $request->exclude_appointment_id;
+
+        // Get the doctor record to find the actual doctor_id
+        $user = \App\Models\User::find($userId);
+        if (!$user || $user->role !== 'doctor') {
+            return response()->json([
+                'available' => false,
+                'message' => 'Doctor no encontrado'
+            ]);
+        }
+
+        $doctorRecord = $user->doctor;
+        if (!$doctorRecord) {
+            return response()->json([
+                'available' => false,
+                'message' => 'Registro de doctor no encontrado'
+            ]);
+        }
+
+        $doctorId = $doctorRecord->id; // This is the actual doctor_id for appointments table
 
         // Combine date and time
         $dateTime = $date . ' ' . $time;
@@ -492,10 +511,9 @@ class AppointmentController extends Controller
         }
 
         // Verify doctor's schedule
-        $doctor = \App\Models\User::find($doctorId);
-        if ($doctor && $doctor->work_days) {
+        if ($user->work_days) {
             $dayOfWeek = strtolower(\Carbon\Carbon::parse($date)->format('l'));
-            $workDays = json_decode($doctor->work_days, true) ?? [];
+            $workDays = json_decode($user->work_days, true) ?? [];
 
             if (!in_array($dayOfWeek, $workDays)) {
                 return response()->json([
@@ -505,8 +523,8 @@ class AppointmentController extends Controller
             }
 
             // Check work hours
-            $scheduleStart = $doctor->schedule_start ?? '08:00';
-            $scheduleEnd = $doctor->schedule_end ?? '17:00';
+            $scheduleStart = $user->schedule_start ?? '08:00';
+            $scheduleEnd = $user->schedule_end ?? '17:00';
 
             if ($time < $scheduleStart || $time >= $scheduleEnd) {
                 return response()->json([
@@ -533,14 +551,23 @@ class AppointmentController extends Controller
                 'date' => 'required|date|after_or_equal:today'
             ]);
 
-            $doctorId = $request->doctor_id;
+            $userId = $request->doctor_id; // Este es el user_id, no el doctor_id
             $date = $request->date;
 
-            $doctor = \App\Models\User::find($doctorId);
-            if (!$doctor) {
+            $user = \App\Models\User::find($userId);
+            if (!$user || $user->role !== 'doctor') {
                 return response()->json([
                     'success' => false,
                     'message' => 'Doctor no encontrado'
+                ], 404);
+            }
+
+            // Obtener el registro de doctor desde la tabla doctors
+            $doctorRecord = $user->doctor;
+            if (!$doctorRecord) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Registro de doctor no encontrado'
                 ], 404);
             }
 
@@ -550,7 +577,7 @@ class AppointmentController extends Controller
             // Safe JSON decode
             $workDays = [];
             try {
-                $workDays = json_decode($doctor->work_days ?? '[]', true) ?? [];
+                $workDays = json_decode($user->work_days ?? '[]', true) ?? [];
             } catch (\Exception $e) {
                 $workDays = [];
             }
@@ -569,30 +596,30 @@ class AppointmentController extends Controller
 
             // Generate time slots with safe parsing
             try {
-                $startTime = \Carbon\Carbon::parse($doctor->schedule_start ?? '08:00');
-                $endTime = \Carbon\Carbon::parse($doctor->schedule_end ?? '17:00');
+                $startTime = \Carbon\Carbon::parse($user->schedule_start ?? '08:00');
+                $endTime = \Carbon\Carbon::parse($user->schedule_end ?? '17:00');
             } catch (\Exception $e) {
                 $startTime = \Carbon\Carbon::parse('08:00');
                 $endTime = \Carbon\Carbon::parse('17:00');
             }
 
-            $consultationDuration = intval($doctor->consultation_duration ?? 30);
+            $consultationDuration = intval($user->consultation_duration ?? 30);
 
             // Safe break time parsing
             $breakStart = null;
             $breakEnd = null;
 
-            if ($doctor->break_start) {
+            if ($user->break_start) {
                 try {
-                    $breakStart = \Carbon\Carbon::parse($doctor->break_start);
+                    $breakStart = \Carbon\Carbon::parse($user->break_start);
                 } catch (\Exception $e) {
                     $breakStart = null;
                 }
             }
 
-            if ($doctor->break_end) {
+            if ($user->break_end) {
                 try {
-                    $breakEnd = \Carbon\Carbon::parse($doctor->break_end);
+                    $breakEnd = \Carbon\Carbon::parse($user->break_end);
                 } catch (\Exception $e) {
                     $breakEnd = null;
                 }
@@ -616,7 +643,7 @@ class AppointmentController extends Controller
                 // Check availability for this slot
                 try {
                     $availabilityRequest = new Request([
-                        'doctor_id' => $doctorId,
+                        'doctor_id' => $userId, // Usar user_id, no doctor_id
                         'date' => $date,
                         'time' => $slotTime,
                         'duration' => $consultationDuration

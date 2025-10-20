@@ -209,6 +209,7 @@ Route::middleware('auth:web')->group(function () {
         Route::get('/appointments', function () {
             return view('pages.appointments.index');
         })->name('appointments.index');
+
     });
 
     Route::middleware(['check.role:admin,doctor,nurse,receptionist', 'check.subscription.limits:add_appointment'])->group(function () {
@@ -427,6 +428,7 @@ Route::middleware('auth:web')->group(function () {
     Route::get('/api/dashboard/debug', [DashboardController::class, 'debug']);
 
     // Stats routes for each module
+    // IMPORTANT: These routes must be defined BEFORE any apiResource routes to avoid conflicts
 
     Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
         Route::get('/api/appointments/stats', [AppointmentController::class, 'stats']);

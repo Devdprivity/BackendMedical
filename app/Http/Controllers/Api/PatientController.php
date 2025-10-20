@@ -33,10 +33,11 @@ class PatientController extends Controller
         $query = Patient::query();
 
         // Apply user-specific filters
-        $query = $this->applyUserFilters($query, $request, 'patients');
+        // TEMPORALMENTE COMENTADO PARA DIAGNOSTICAR
+        // $query = $this->applyUserFilters($query, $request, 'patients');
 
         // Apply subscription limits
-        $query = $this->applySubscriptionLimits($query, 'patients');
+        // $query = $this->applySubscriptionLimits($query, 'patients');
 
         // Additional filters
         if ($request->has('search')) {

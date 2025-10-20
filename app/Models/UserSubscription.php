@@ -102,15 +102,16 @@ class UserSubscription extends Model
     }
 
     /**
-     * Get trial days remaining.
+     * Get trial hours remaining.
      */
-    public function getTrialDaysRemainingAttribute(): int
+    public function getTrialHoursRemainingAttribute(): int
     {
         if (!$this->trial_ends_at || $this->trial_ends_at <= now()) {
             return 0;
         }
 
-        return max(0, now()->diffInDays($this->trial_ends_at, false));
+        $hoursRemaining = now()->diffInHours($this->trial_ends_at, false);
+        return max(0, $hoursRemaining);
     }
 
     /**

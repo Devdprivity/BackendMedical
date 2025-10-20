@@ -15,17 +15,17 @@ class SubscriptionPlansSeeder extends Seeder
     {
         $plans = [
             [
-                'name' => 'Plan GRATUITO',
+                'name' => 'Plan PRUEBA TEMPORAL',
                 'slug' => 'free',
-                'description' => 'Perfecto para probar el sistema. Incluye funciones básicas con límites.',
+                'description' => 'Prueba gratuita de 1 hora para evaluar el sistema. Incluye funciones básicas con límites.',
                 'price_monthly' => 0,
                 'price_yearly' => 0,
                 'is_active' => true,
                 'is_free' => true,
-                'trial_days' => 7,
+                'trial_days' => 0.042, // 1 hora = 1/24 días ≈ 0.042 días
                 'max_doctors' => 1,
-                'max_patients' => 50,
-                'max_appointments_per_month' => 100,
+                'max_patients' => 10,
+                'max_appointments_per_month' => 5,
                 'max_locations' => 1,
                 'max_staff' => 1,
                 'features' => [
@@ -41,8 +41,8 @@ class SubscriptionPlansSeeder extends Seeder
                 'name' => 'Plan DOCTOR INDEPENDIENTE',
                 'slug' => 'doctor',
                 'description' => 'Ideal para doctores independientes que necesitan gestión completa de pacientes.',
-                'price_monthly' => 29,
-                'price_yearly' => 290,
+                'price_monthly' => 129,
+                'price_yearly' => 1290,
                 'is_active' => true,
                 'is_free' => false,
                 'trial_days' => 0,
@@ -68,8 +68,8 @@ class SubscriptionPlansSeeder extends Seeder
                 'name' => 'Plan CLÍNICA PEQUEÑA',
                 'slug' => 'small_clinic',
                 'description' => 'Para clínicas pequeñas con múltiples doctores y especialidades.',
-                'price_monthly' => 79,
-                'price_yearly' => 790,
+                'price_monthly' => 179,
+                'price_yearly' => 1790,
                 'is_active' => true,
                 'is_free' => false,
                 'trial_days' => 0,
@@ -100,8 +100,8 @@ class SubscriptionPlansSeeder extends Seeder
                 'name' => 'Plan CLÍNICA GRANDE',
                 'slug' => 'large_clinic',
                 'description' => 'Para clínicas grandes con múltiples ubicaciones y doctores ilimitados.',
-                'price_monthly' => 199,
-                'price_yearly' => 1990,
+                'price_monthly' => 299,
+                'price_yearly' => 2990,
                 'is_active' => true,
                 'is_free' => false,
                 'trial_days' => 0,
@@ -138,8 +138,8 @@ class SubscriptionPlansSeeder extends Seeder
                 'name' => 'Plan ENTERPRISE',
                 'slug' => 'enterprise',
                 'description' => 'Solución empresarial completa con personalización total y soporte dedicado.',
-                'price_monthly' => 999, // Contact sales - placeholder price
-                'price_yearly' => 9999, // Contact sales - placeholder price
+                'price_monthly' => 1099, // Contact sales - placeholder price
+                'price_yearly' => 10999, // Contact sales - placeholder price
                 'is_active' => true,
                 'is_free' => false,
                 'trial_days' => 0,

@@ -128,7 +128,10 @@ class GoogleController extends Controller
             return;
         }
         
-        $trialEndDate = now()->addDays($freePlan->trial_days);
+        // Para el plan de prueba de 1 hora, usar addHour() en lugar de addDays()
+        $trialEndDate = $freePlan->trial_days <= 1 ? 
+            now()->addHour() : 
+            now()->addDays($freePlan->trial_days);
         
         UserSubscription::create([
             'user_id' => $user->id,
@@ -180,7 +183,7 @@ class GoogleController extends Controller
         return response()->json([
             'message' => 'Cuenta creada exitosamente',
             'user' => $user,
-            'trial_days' => 7,
+            'trial_duration' => '1 hora',
                 'redirect' => route('onboarding.index')
             ]);
         }
@@ -225,8 +228,9 @@ class GoogleController extends Controller
         ];
         
         if ($subscription->isTrial()) {
+            $data['trial_hours_remaining'] = $subscription->trial_hours_remaining;
             $data['trial_days_remaining'] = $subscription->trial_days_remaining;
-            $data['message'] = "Tu prueba gratuita termina en {$subscription->trial_days_remaining} días.";
+            $data['message'] = "Tu prueba gratuita termina en {$subscription->trial_hours_remaining} horas.";
         } elseif ($subscription->isActive()) {
             $data['message'] = "Tu suscripción está activa hasta " . $subscription->ends_at->format('d/m/Y');
         } elseif ($subscription->isExpired()) {
