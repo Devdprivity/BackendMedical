@@ -9,7 +9,7 @@
     <title>@yield('title', 'MediCare Pro - Sistema de Gestión Médica')</title>
     
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="{{ asset('images/logo-icon.svg') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ secure_asset('images/logo-icon.svg') }}">
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

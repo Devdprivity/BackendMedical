@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.onboarding')
 
 @section('title', '¡Felicitaciones! - MediCare Pro')
 

@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.onboarding')
 
 @section('title', 'Paso 3: Link de Citas Públicas - MediCare Pro')
 

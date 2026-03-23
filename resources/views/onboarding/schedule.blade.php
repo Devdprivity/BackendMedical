@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.onboarding')
 
 @section('title', 'Paso 2: Configura tu Horario - MediCare Pro')
 
