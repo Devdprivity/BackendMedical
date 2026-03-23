@@ -19,11 +19,18 @@ class Appointment extends Model
         'reason',
         'notes',
         'status',
+        'confirmation_required',
+        'confirmation_sent_at',
+        'confirmation_status',
+        'reminder_hours_before',
     ];
 
     protected $casts = [
         'date_time' => 'datetime',
         'duration' => 'integer',
+        'confirmation_required' => 'boolean',
+        'confirmation_sent_at' => 'datetime',
+        'reminder_hours_before' => 'integer',
     ];
 
     /**

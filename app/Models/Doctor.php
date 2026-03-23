@@ -26,14 +26,20 @@ class Doctor extends Model
         'bio',
         'photo_url',
         'rating',
+        'base_city',
+        'base_clinic_id',
+        'travels_to_locations',
+        'preferred_cities',
     ];
 
     protected $casts = [
         'education' => 'array',
         'certifications' => 'array',
         'languages' => 'array',
+        'preferred_cities' => 'array',
         'experience_years' => 'integer',
         'rating' => 'decimal:2',
+        'travels_to_locations' => 'boolean',
     ];
 
     /**
@@ -250,5 +256,57 @@ class Doctor extends Model
     public function createPatientRelationship($patientId)
     {
         return $this->ensurePatientRelationship($patientId, 'primary');
+    }
+
+    /**
+     * Get doctor schedules
+     */
+    public function schedules()
+    {
+        return $this->hasMany(DoctorSchedule::class);
+    }
+
+    /**
+     * Get active schedules
+     */
+    public function activeSchedules()
+    {
+        return $this->schedules()->active()->availableForBooking();
+    }
+
+    /**
+     * Get base clinic relationship
+     */
+    public function baseClinic()
+    {
+        return $this->belongsTo(Clinic::class, 'base_clinic_id');
+    }
+
+    /**
+     * Get schedules for a specific city
+     */
+    public function schedulesInCity($city)
+    {
+        return $this->schedules()->inCity($city)->active();
+    }
+
+    /**
+     * Check if doctor has schedule in a specific city
+     */
+    public function hasScheduleInCity($city)
+    {
+        return $this->schedules()->inCity($city)->active()->exists();
+    }
+
+    /**
+     * Get all cities where doctor has schedules
+     */
+    public function getCitiesWithSchedules()
+    {
+        return $this->schedules()
+            ->active()
+            ->distinct()
+            ->pluck('city')
+            ->toArray();
     }
 }

@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MedicationController;
 use App\Http\Controllers\Api\PaymentMethodController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DoctorScheduleController;
 use App\Http\Controllers\PaymentLinkController;
 use App\Http\Controllers\BookingController;
 
@@ -60,6 +61,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/doctors/{doctor}/today-appointments', [DoctorController::class, 'todayAppointments']);
     Route::get('/doctors/{doctor}/surgeries', [DoctorController::class, 'surgeries']);
     Route::get('/doctors/{doctor}/exams', [DoctorController::class, 'requestedExams']);
+    Route::get('/doctors/{doctor}/schedules', [DoctorScheduleController::class, 'byDoctor']);
 
     // Patients
     Route::apiResource('patients', PatientController::class);
@@ -105,7 +107,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/medications/{medication}/movement', [MedicationController::class, 'addMovement']);
     Route::get('/medications/{medication}/movements', [MedicationController::class, 'movements']);
 
-
+    // Doctor Schedules (Agenda Multi-Ubicación)
+    Route::apiResource('doctor-schedules', DoctorScheduleController::class);
+    Route::get('/doctor-schedules/{schedule}/available-slots', [DoctorScheduleController::class, 'availableSlots']);
+    Route::get('/doctor-schedules/{schedule}/calendar', [DoctorScheduleController::class, 'calendar']);
+    Route::get('/schedules/by-city/{city}', [DoctorScheduleController::class, 'byCity']);
 });
 
 // Routes for web interface (using web session authentication)

@@ -22,10 +22,17 @@ class Patient extends Model
         'status',
         'preferred_clinic_id',
         'created_by',
+        'whatsapp_number',
+        'whatsapp_opt_in',
+        'prefers_whatsapp',
+        'whatsapp_opt_in_date',
     ];
 
     protected $casts = [
         'birth_date' => 'date',
+        'whatsapp_opt_in' => 'boolean',
+        'prefers_whatsapp' => 'boolean',
+        'whatsapp_opt_in_date' => 'datetime',
     ];
 
     /**
