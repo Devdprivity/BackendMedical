@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Actualización de Plan Requerida - MediCare Pro')
+@section('title', 'Actualización de Plan Requerida - DrOrganiza')
 
 @section('content')
 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; text-align: center; padding: 2rem;">

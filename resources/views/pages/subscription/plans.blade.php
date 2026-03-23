@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Planes de Suscripción - MediCare Pro')
+@section('title', 'Planes de Suscripción - DrOrganiza')
 
 @section('content')
 <div class="pricing-page">

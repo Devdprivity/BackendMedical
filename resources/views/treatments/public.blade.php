@@ -362,7 +362,7 @@
             <div class="logo">
                 <i class="fas fa-heartbeat"></i>
             </div>
-            <h1>MediCare Pro</h1>
+            <h1>DrOrganiza</h1>
             <p>Tratamiento Médico Digital</p>
         </div>
 
@@ -522,7 +522,7 @@
         <div class="footer">
             <p>Este documento contiene información médica confidencial.</p>
             <p>Generado el {{ now()->format('d/m/Y H:i') }}</p>
-            <p class="powered-by">Powered by MediCare Pro</p>
+            <p class="powered-by">Powered by DrOrganiza</p>
         </div>
     </div>
 </body>

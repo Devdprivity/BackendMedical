@@ -1,6 +1,6 @@
 @extends('layouts.onboarding')
 
-@section('title', 'Paso 3: Link de Citas Públicas - MediCare Pro')
+@section('title', 'Paso 3: Link de Citas Públicas - DrOrganiza')
 
 @section('content')
 <div class="page-header">

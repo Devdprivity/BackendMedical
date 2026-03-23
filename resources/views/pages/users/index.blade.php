@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Administración de Usuarios - MediCare Pro')
+@section('title', 'Administración de Usuarios - DrOrganiza')
 
 @section('content')
 <div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">

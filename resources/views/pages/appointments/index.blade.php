@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Citas Médicas - MediCare Pro')
+@section('title', 'Citas Médicas - DrOrganiza')
 
 @section('content')
 <div class="appointments-container">
@@ -2858,7 +2858,7 @@ ${videoCallUrl}
 
 ℹ️ Esta sala estará activa por las próximas 2 horas.
 💡 Asegúrate de tener una buena conexión a internet y permisos de cámara/micrófono en tu navegador.
-🏥 Sistema MediCare Pro - Videoconsultas seguras`;
+🏥 Sistema DrOrganiza - Videoconsultas seguras`;
     
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
@@ -2898,7 +2898,7 @@ Dr. {{ auth()->user()->name }}
 {{ auth()->user()->email }}
 
 ---
-Sistema MediCare Pro - Videoconsultas Médicas Seguras`;
+Sistema DrOrganiza - Videoconsultas Médicas Seguras`;
     
     const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.open(mailtoUrl);
@@ -2935,7 +2935,7 @@ function generateInstantQR() {
                 </div>
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle"></i>
-                    Los pacientes pueden escanear este código QR con su teléfono para unirse directamente a la videollamada en el sistema MediCare Pro.
+                    Los pacientes pueden escanear este código QR con su teléfono para unirse directamente a la videollamada en el sistema DrOrganiza.
                 </div>
                 <div class="text-center">
                     <p class="small text-muted">Sala ID: ${currentInstantVideoCall.room_name}</p>
@@ -3017,7 +3017,7 @@ function printInstantQRCode(videoCallUrl) {
                     <p style="font-size: 0.9em; font-weight: bold;">Sala: ${currentInstantVideoCall.room_name}</p>
                     <p style="font-size: 0.8em;">${decodeURIComponent(videoCallUrl)}</p>
                     <p style="font-size: 0.7em; color: #999;">Creada: ${formatDateTime(currentInstantVideoCall.created_at)}</p>
-                    <p style="font-size: 0.7em; color: #999;">Sistema MediCare Pro - Videoconsultas Seguras</p>
+                    <p style="font-size: 0.7em; color: #999;">Sistema DrOrganiza - Videoconsultas Seguras</p>
                 </div>
             </body>
         </html>

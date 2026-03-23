@@ -1,6 +1,6 @@
 @extends('layouts.onboarding')
 
-@section('title', 'Paso 1: Completa tu Perfil - MediCare Pro')
+@section('title', 'Paso 1: Completa tu Perfil - DrOrganiza')
 
 @section('content')
 <div class="page-header">

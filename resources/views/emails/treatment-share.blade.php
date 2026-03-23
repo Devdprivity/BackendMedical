@@ -284,7 +284,7 @@
     <div class="email-container">
         <!-- Header -->
         <div class="header">
-            <h1>🏥 MediCare Pro</h1>
+            <h1>🏥 DrOrganiza</h1>
             <p>Tratamiento Médico Compartido</p>
         </div>
         
@@ -394,9 +394,9 @@
         
         <!-- Footer -->
         <div class="footer">
-            <p><strong>MediCare Pro</strong> - Sistema de Gestión Clínica Inteligente</p>
+            <p><strong>DrOrganiza</strong> - Sistema de Gestión Clínica Inteligente</p>
             <p>Este email fue generado automáticamente el {{ now()->format('d/m/Y H:i') }}</p>
-            <p class="powered-by">Powered by MediCare Pro</p>
+            <p class="powered-by">Powered by DrOrganiza</p>
         </div>
     </div>
 </body>

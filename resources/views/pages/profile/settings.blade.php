@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Configuración - MediCare Pro')
+@section('title', 'Configuración - DrOrganiza')
 
 @section('content')
 <div class="page-header">
@@ -9,7 +9,7 @@
             <i class="fas fa-cog"></i>
             Configuración
         </h1>
-        <p class="page-subtitle">Personaliza tu experiencia en MediCare Pro</p>
+        <p class="page-subtitle">Personaliza tu experiencia en DrOrganiza</p>
     </div>
     <div class="page-actions">
         <a href="{{ route('profile.show') }}" class="btn btn-outline">
@@ -186,7 +186,7 @@
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
             <div>
                 <label style="font-weight: 600; color: var(--gray-700);">Versión</label>
-                <div style="color: var(--gray-600);">MediCare Pro v1.0.0</div>
+                <div style="color: var(--gray-600);">DrOrganiza v1.0.0</div>
             </div>
             <div>
                 <label style="font-weight: 600; color: var(--gray-700);">Última actualización</label>

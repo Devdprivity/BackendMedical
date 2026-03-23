@@ -1,6 +1,6 @@
 @extends('layouts.onboarding')
 
-@section('title', 'Paso 2: Configura tu Horario - MediCare Pro')
+@section('title', 'Paso 2: Configura tu Horario - DrOrganiza')
 
 @section('content')
 <div class="page-header">

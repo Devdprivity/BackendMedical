@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Videoconsulta - MediCare Pro')
+@section('title', 'Videoconsulta - DrOrganiza')
 
 @section('content')
 <div class="video-call-container">
@@ -753,8 +753,8 @@ function initializeJitsi() {
             SHOW_POWERED_BY: false,
             DISPLAY_WELCOME_PAGE_CONTENT: false,
             DISPLAY_WELCOME_PAGE_TOOLBAR_ADDITIONAL_CONTENT: false,
-            APP_NAME: 'MediCare Pro',
-            NATIVE_APP_NAME: 'MediCare Pro',
+            APP_NAME: 'DrOrganiza',
+            NATIVE_APP_NAME: 'DrOrganiza',
             DEFAULT_BACKGROUND: '#2c3e50',
             INITIAL_TOOLBAR_TIMEOUT: 20000,
             TOOLBAR_TIMEOUT: 4000,

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Detalles del Examen - MediCare Pro')
+@section('title', 'Detalles del Examen - DrOrganiza')
 
 @section('content')
 <div class="page-header">

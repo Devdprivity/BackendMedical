@@ -1,11 +1,11 @@
 @extends('layouts.onboarding')
 
-@section('title', 'Configuración Inicial - MediCare Pro')
+@section('title', 'Configuración Inicial - DrOrganiza')
 
 @section('content')
 <div class="page-header">
     <div>
-        <h1 class="page-title">¡Bienvenido a MediCare Pro!</h1>
+        <h1 class="page-title">¡Bienvenido a DrOrganiza!</h1>
         <p class="page-subtitle">Configuremos tu cuenta paso a paso para comenzar</p>
     </div>
 </div>

@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="description" content="Sistema de gestión médica integral para clínicas y hospitales. Administra pacientes, citas, historiales médicos y más.">
     
-    <title>@yield('title', 'MediCare Pro - Sistema de Gestión Médica')</title>
+    <title>@yield('title', 'DrOrganiza - Sistema de Gestión Médica')</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="{{ secure_asset('images/logo-icon.svg') }}">
@@ -770,7 +770,7 @@
                 <div class="logo-icon">
                     <i class="fas fa-user-md"></i>
                 </div>
-                <span class="logo-text">MediCare Pro</span>
+                <span class="logo-text">DrOrganiza</span>
             </a>
         </div>
         

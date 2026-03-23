@@ -246,7 +246,7 @@
 <body>
     <!-- Header -->
     <div class="header">
-        <div class="logo">🏥 MediCare Pro</div>
+        <div class="logo">🏥 DrOrganiza</div>
         <h1>Prescripción Médica</h1>
         <p>Sistema de Gestión Clínica Inteligente</p>
     </div>
@@ -403,7 +403,7 @@
         <div>
             Este documento contiene información médica confidencial | 
             Generado el {{ now()->format('d/m/Y H:i') }} | 
-            Powered by MediCare Pro
+            Powered by DrOrganiza
         </div>
     </div>
 </body>

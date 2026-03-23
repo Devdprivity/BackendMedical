@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>@yield('title', 'Configuración Inicial - MediCare Pro')</title>
+    <title>@yield('title', 'Configuración Inicial - DrOrganiza')</title>
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="{{ secure_asset('images/logo-icon.svg') }}">
@@ -131,7 +131,7 @@
         <div class="onboarding-topbar">
             <a href="{{ route('dashboard') }}" class="onboarding-logo">
                 <i class="fas fa-heartbeat"></i>
-                <span>MediCare Pro</span>
+                <span>DrOrganiza</span>
             </a>
             <a href="#" onclick="logout()" class="btn-outline-danger">
                 <i class="fas fa-sign-out-alt"></i> Cerrar Sesión

@@ -1,6 +1,6 @@
 @extends('layouts.onboarding')
 
-@section('title', 'Paso 4: Métodos de Pago - MediCare Pro')
+@section('title', 'Paso 4: Métodos de Pago - DrOrganiza')
 
 @section('content')
 <div class="page-header">

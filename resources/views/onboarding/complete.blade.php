@@ -1,6 +1,6 @@
 @extends('layouts.onboarding')
 
-@section('title', '¡Felicitaciones! - MediCare Pro')
+@section('title', '¡Felicitaciones! - DrOrganiza')
 
 @section('content')
 <div class="page-header">
@@ -19,14 +19,14 @@
         </div>
         
         <h2 style="color: var(--success); margin-bottom: 1rem;">¡Todo listo para comenzar!</h2>
-        <p style="color: var(--gray-500); font-size: 1.1rem; max-width: 500px; margin: 0 auto 2rem;">Has completado exitosamente la configuración inicial. Tu cuenta de MediCare Pro está lista para usar.</p>
+        <p style="color: var(--gray-500); font-size: 1.1rem; max-width: 500px; margin: 0 auto 2rem;">Has completado exitosamente la configuración inicial. Tu cuenta de DrOrganiza está lista para usar.</p>
         
         <!-- Action Button -->
         <form method="POST" action="{{ route('onboarding.finish') }}">
             @csrf
             <button type="submit" class="btn btn-primary" style="padding: 1rem 2rem; font-size: 1.1rem;">
                 <i class="fas fa-play-circle"></i>
-                ¡Comenzar a usar MediCare Pro!
+                ¡Comenzar a usar DrOrganiza!
             </button>
         </form>
     </div>

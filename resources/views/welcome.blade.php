@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>MediCare Pro - Sistema de Gestión Clínica Inteligente</title>
+        <title>DrOrganiza - Sistema de Gestión Clínica Inteligente</title>
         
         <!-- Fonts -->
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -1333,7 +1333,7 @@
                     <div class="logo-icon">
                         <i class="fas fa-heartbeat"></i>
                     </div>
-                    MediCare Pro
+                    DrOrganiza
                 </a>
 
                 <ul class="nav-links">
@@ -1537,7 +1537,7 @@
             <div class="section-container">
                 <div class="section-header">
                     <div class="section-badge">Beneficios</div>
-                    <h2 class="section-title">¿Por qué elegir MediCare Pro?</h2>
+                    <h2 class="section-title">¿Por qué elegir DrOrganiza?</h2>
                     <p class="section-subtitle">
                         Descubre las ventajas que nos convierten en la plataforma líder en gestión clínica
                     </p>
@@ -1687,7 +1687,7 @@
                     <div class="section-badge">Testimonios</div>
                     <h2 class="section-title">Lo que dicen nuestros usuarios</h2>
                     <p class="section-subtitle">
-                        Miles de profesionales ya confían en MediCare Pro
+                        Miles de profesionales ya confían en DrOrganiza
                     </p>
                 </div>
 
@@ -1702,7 +1702,7 @@
                                 <i class="fas fa-star"></i>
                             </div>
                             <p class="testimonial-text">
-                                "MediCare Pro transformó completamente mi práctica. Ahorro 6 horas diarias en tareas administrativas y mis pacientes están más satisfechos que nunca."
+                                "DrOrganiza transformó completamente mi práctica. Ahorro 6 horas diarias en tareas administrativas y mis pacientes están más satisfechos que nunca."
                             </p>
                         </div>
                         <div class="testimonial-author">
@@ -1750,7 +1750,7 @@
                                 <i class="fas fa-star"></i>
                             </div>
                             <p class="testimonial-text">
-                                "Como pediatra, necesitaba un sistema que fuera fácil de usar. MediCare Pro es intuitivo y mis asistentes lo adoptaron inmediatamente."
+                                "Como pediatra, necesitaba un sistema que fuera fácil de usar. DrOrganiza es intuitivo y mis asistentes lo adoptaron inmediatamente."
                             </p>
                         </div>
                         <div class="testimonial-author">
@@ -1831,7 +1831,7 @@
                     <div class="section-badge">Preguntas Frecuentes</div>
                     <h2 class="section-title">¿Tienes dudas?</h2>
                     <p class="section-subtitle">
-                        Resolvemos las preguntas más comunes sobre MediCare Pro
+                        Resolvemos las preguntas más comunes sobre DrOrganiza
                     </p>
                 </div>
 
@@ -1895,7 +1895,7 @@
                 <div class="cta-container animate-fade-in">
                     <h2 class="cta-title">Transforma tu práctica médica hoy</h2>
                     <p class="cta-subtitle">
-                        Únete a miles de profesionales que ya confían en MediCare Pro para revolucionar su atención médica
+                        Únete a miles de profesionales que ya confían en DrOrganiza para revolucionar su atención médica
                     </p>
                     <a href="{{ route('login') }}" class="btn btn-cta">
                         <i class="fas fa-arrow-right"></i>
@@ -1914,7 +1914,7 @@
                             <div class="logo-icon">
                                 <i class="fas fa-heartbeat"></i>
                             </div>
-                            MediCare Pro
+                            DrOrganiza
                         </a>
                         <p class="footer-description">
                             La plataforma de gestión clínica más avanzada del mercado, diseñada para profesionales que buscan excelencia en la atención médica.
@@ -1967,7 +1967,7 @@
                 </div>
 
                 <div class="footer-bottom">
-                    <p>&copy; {{ date('Y') }} MediCare Pro. Todos los derechos reservados.</p>
+                    <p>&copy; {{ date('Y') }} DrOrganiza. Todos los derechos reservados.</p>
                 </div>
             </div>
         </footer>
