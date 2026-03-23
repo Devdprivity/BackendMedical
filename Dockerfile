@@ -12,7 +12,10 @@ COPY . .
 RUN npm run build
 
 # ============================================================
-FROM composer:2 AS composer-builder
+FROM php:8.2-alpine AS composer-builder
+
+RUN apk add --no-cache curl unzip \
+    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 WORKDIR /app
 
