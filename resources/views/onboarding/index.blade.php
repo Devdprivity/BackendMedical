@@ -8,6 +8,11 @@
         <h1 class="page-title">¡Bienvenido a MediCare Pro!</h1>
         <p class="page-subtitle">Configuremos tu cuenta paso a paso para comenzar</p>
     </div>
+    <div>
+        <a href="#" onclick="logout()" class="btn btn-outline-danger btn-sm">
+            <i class="fas fa-sign-out-alt me-1"></i> Cerrar Sesión
+        </a>
+    </div>
 </div>
 
 <!-- Progress Section -->

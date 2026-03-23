@@ -956,7 +956,7 @@
         
         async function logout() {
             try {
-                const response = await fetch('{{ route("logout") }}', {
+                await fetch('{{ route("logout") }}', {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -964,12 +964,9 @@
                         'Accept': 'application/json'
                     }
                 });
-                
-                if (response.ok) {
-                    window.location.href = '/';
-                }
             } catch (error) {
                 console.error('Error al cerrar sesión:', error);
+            } finally {
                 window.location.href = '/';
             }
         }
