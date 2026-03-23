@@ -2,7 +2,14 @@
 set -e
 
 echo "==> Generando clave de aplicación si no existe..."
-php artisan key:generate --no-interaction --force
+if [ ! -f .env ]; then
+    cp .env.example .env 2>/dev/null || touch .env
+fi
+if [ -z "$APP_KEY" ]; then
+    php artisan key:generate --no-interaction --force
+else
+    echo "APP_KEY ya está definida como variable de entorno, omitiendo key:generate"
+fi
 
 echo "==> Ejecutando migraciones..."
 php artisan migrate --force --no-interaction
