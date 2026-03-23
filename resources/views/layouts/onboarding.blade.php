@@ -144,7 +144,7 @@
     <script>
         async function logout() {
             try {
-                await fetch('{{ route("logout") }}', {
+                await fetch('/logout', {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
