@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Doctor;
+use App\Models\SubscriptionPlan;
+use App\Models\UserSubscription;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -75,6 +77,30 @@ class AuthController extends Controller
                 'experience_years' => 1,
                 'bio' => 'Doctor registrado en el sistema',
                 'rating' => 4.0
+            ]);
+        }
+
+        // Asignar plan free trial al nuevo usuario
+        $freePlan = SubscriptionPlan::where('slug', 'free')->first();
+        if ($freePlan) {
+            $trialEndDate = $freePlan->trial_days <= 1
+                ? now()->addHour()
+                : now()->addDays($freePlan->trial_days);
+
+            UserSubscription::create([
+                'user_id'                          => $user->id,
+                'subscription_plan_id'             => $freePlan->id,
+                'status'                           => 'trial',
+                'starts_at'                        => now(),
+                'ends_at'                          => $trialEndDate,
+                'trial_ends_at'                    => $trialEndDate,
+                'billing_cycle'                    => 'monthly',
+                'current_doctors_count'            => 0,
+                'current_patients_count'           => 0,
+                'current_appointments_this_month'  => 0,
+                'current_locations_count'          => 0,
+                'current_staff_count'              => 1,
+                'last_monthly_reset'               => now()->startOfMonth(),
             ]);
         }
 
