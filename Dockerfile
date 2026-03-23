@@ -74,6 +74,7 @@ RUN chmod +x /entrypoint.sh \
     && mkdir -p storage/framework/{cache,sessions,views} \
                storage/logs \
                bootstrap/cache \
+               /var/log/supervisor \
     && chown -R www-data:www-data /var/www/html \
     && chmod -R 775 storage bootstrap/cache
 
