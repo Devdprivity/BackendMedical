@@ -2039,14 +2039,14 @@
             let currentBilling = 'monthly';
             const pricingData = {
                 monthly: {
-                    doctor: { price: 29, period: '/mes' },
-                    clinic: { price: 79, period: '/mes' },
-                    enterprise: { price: 199, period: '/mes' }
+                    doctor: { price: 70, period: '/mes' },
+                    clinic: { price: 340, period: '/mes' },
+                    enterprise: { price: 1500, period: '/mes' }
                 },
                 yearly: {
-                    doctor: { price: 290, period: '/año' },
-                    clinic: { price: 790, period: '/año' },
-                    enterprise: { price: 1990, period: '/año' }
+                    doctor: { price: 700, period: '/año' },
+                    clinic: { price: 3400, period: '/año' },
+                    enterprise: { price: 15000, period: '/año' }
                 }
             };
 

@@ -14,6 +14,9 @@ fi
 echo "==> Ejecutando migraciones..."
 php artisan migrate --force --no-interaction
 
+echo "==> Actualizando planes de suscripción..."
+php artisan db:seed --class=SubscriptionPlansSeeder --force
+
 echo "==> Creando enlace de almacenamiento..."
 php artisan storage:link --no-interaction 2>/dev/null || true
 
