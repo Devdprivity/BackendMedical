@@ -128,8 +128,7 @@ Route::middleware(['auth:web'])->group(function () {
         Route::get('appointments/today', [AppointmentController::class, 'today'])->name('api.appointments.today');
     });
 
-    // Payment Methods
-    Route::apiResource('payment-methods', PaymentMethodController::class);
+    // Payment Methods - CRUD handled in web.php (session auth)
     Route::post('/payment-methods/order', [PaymentMethodController::class, 'updateOrder']);
     Route::post('/payment-methods/{paymentMethod}/generate-link', [PaymentMethodController::class, 'generateLink']);
     Route::get('/payment-methods/link/{token}', [PaymentMethodController::class, 'getPaymentLink']);
