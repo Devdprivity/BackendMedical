@@ -214,7 +214,7 @@ Route::middleware('auth:web')->group(function () {
 
     Route::middleware(['check.role:admin,doctor,nurse,receptionist', 'check.subscription.limits:add_appointment'])->group(function () {
         Route::get('/appointments/create', function () {
-            return view('pages.appointments.create');
+            return view('pages.appointments.create', ['authUser' => auth()->user()]);
         })->name('appointments.create');
     });
 

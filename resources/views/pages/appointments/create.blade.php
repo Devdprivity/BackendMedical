@@ -269,6 +269,19 @@
 let selectedPatientId = null;
 let selectedDoctorId = null;
 let availableSlots = [];
+let doctorSchedules = {}; // schedule data keyed by doctor user id
+
+@if(auth()->user()->role === 'doctor')
+// Pre-load schedule for doctor user
+doctorSchedules[{{ auth()->user()->id }}] = {
+    schedule_start: '{{ substr($authUser->schedule_start ?? "08:00", 0, 5) }}',
+    schedule_end:   '{{ substr($authUser->schedule_end   ?? "17:00", 0, 5) }}',
+    break_start:    '{{ $authUser->break_start ? substr($authUser->break_start, 0, 5) : "" }}',
+    break_end:      '{{ $authUser->break_end   ? substr($authUser->break_end,   0, 5) : "" }}',
+    consultation_duration: {{ $authUser->consultation_duration ?? 30 }},
+    work_days: {!! json_encode(json_decode($authUser->work_days ?? '["monday","tuesday","wednesday","thursday","friday"]', true)) !!}
+};
+@endif
 
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('appointmentForm').addEventListener('submit', handleSubmit);
@@ -342,9 +355,20 @@ async function loadDoctors() {
             const data = await response.json();
             const doctors = data.data?.data || data.data || [];
             const select = document.getElementById('doctor_id');
-            
+
             select.innerHTML = '<option value="">Seleccionar doctor...</option>';
             doctors.forEach(doctor => {
+                // Store schedule for client-side slot generation
+                doctorSchedules[doctor.id] = {
+                    schedule_start: (doctor.schedule_start || '08:00').substring(0, 5),
+                    schedule_end:   (doctor.schedule_end   || '17:00').substring(0, 5),
+                    break_start:    doctor.break_start ? doctor.break_start.substring(0, 5) : '',
+                    break_end:      doctor.break_end   ? doctor.break_end.substring(0, 5)   : '',
+                    consultation_duration: doctor.consultation_duration || 30,
+                    work_days: typeof doctor.work_days === 'string'
+                        ? JSON.parse(doctor.work_days)
+                        : (doctor.work_days || ['monday','tuesday','wednesday','thursday','friday'])
+                };
                 const option = document.createElement('option');
                 option.value = doctor.id;
                 option.textContent = `Dr. ${doctor.name}`;
@@ -356,45 +380,65 @@ async function loadDoctors() {
     }
 }
 
-async function loadAvailableTimeSlots() {
+function loadAvailableTimeSlots() {
     const doctorId = document.getElementById('doctor_id').value;
     const date = document.getElementById('appointment_date').value;
     const timeSelect = document.getElementById('appointment_time');
-    
+
     if (!doctorId || !date) {
         timeSelect.innerHTML = '<option value="">Seleccionar hora...</option>';
         return;
     }
-    
-    timeSelect.innerHTML = '<option value="">Cargando horarios...</option>';
-    
-    try {
-        const response = await fetch(`/api/appointments/available-slots?doctor_id=${doctorId}&date=${date}`, {
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            credentials: 'same-origin'
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok && result.success) {
-            if (result.data.length === 0) {
-                timeSelect.innerHTML = '<option value="">No hay horarios disponibles</option>';
-            } else {
-                const options = result.data.map(slot => 
-                    `<option value="${slot.time}">${slot.display_time}</option>`
-                ).join('');
-                timeSelect.innerHTML = '<option value="">Seleccionar hora...</option>' + options;
-            }
-        } else {
-            timeSelect.innerHTML = '<option value="">Error al cargar horarios</option>';
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        timeSelect.innerHTML = '<option value="">Error al cargar horarios</option>';
+
+    const schedule = doctorSchedules[doctorId];
+    if (!schedule) {
+        timeSelect.innerHTML = '<option value="">Sin horario configurado</option>';
+        return;
     }
+
+    // Check if doctor works this day
+    const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    const dayName = days[new Date(date + 'T12:00:00').getDay()];
+    if (!schedule.work_days.includes(dayName)) {
+        timeSelect.innerHTML = '<option value="">El doctor no atiende este día</option>';
+        return;
+    }
+
+    // Generate slots
+    const slots = [];
+    const duration = parseInt(schedule.consultation_duration) || 30;
+    let current = timeToMinutes(schedule.schedule_start || '08:00');
+    const end = timeToMinutes(schedule.schedule_end || '17:00');
+    const breakStart = schedule.break_start ? timeToMinutes(schedule.break_start) : null;
+    const breakEnd   = schedule.break_end   ? timeToMinutes(schedule.break_end)   : null;
+
+    while (current + duration <= end) {
+        // Skip break
+        if (breakStart !== null && current < breakEnd && current + duration > breakStart) {
+            current = breakEnd;
+            continue;
+        }
+        slots.push(minutesToTime(current));
+        current += duration;
+    }
+
+    if (slots.length === 0) {
+        timeSelect.innerHTML = '<option value="">No hay horarios disponibles</option>';
+    } else {
+        timeSelect.innerHTML = '<option value="">Seleccionar hora...</option>' +
+            slots.map(t => `<option value="${t}">${t}</option>`).join('');
+    }
+}
+
+function timeToMinutes(t) {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+}
+
+function minutesToTime(m) {
+    const h = String(Math.floor(m / 60)).padStart(2, '0');
+    const min = String(m % 60).padStart(2, '0');
+    return `${h}:${min}`;
 }
 
 function handlePatientChange(e) {
@@ -409,46 +453,6 @@ function handleDoctorChange(e) {
 
 function handleDateChange(e) {
     resetAvailability();
-    if (e.target.value && selectedDoctorId) {
-        loadTimeSlots();
-    }
-}
-
-async function loadTimeSlots() {
-    const date = document.getElementById('appointment_date').value;
-    const doctorId = selectedDoctorId;
-    
-    if (!date || !doctorId) return;
-    
-    try {
-        const response = await fetch(`/api/appointments/available-slots?doctor_id=${doctorId}&date=${date}`, {
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            credentials: 'same-origin'
-        });
-        
-        if (response.ok) {
-            const slots = await response.json();
-            populateTimeSlots(slots);
-        }
-    } catch (error) {
-        console.error('Error loading time slots:', error);
-    }
-}
-
-function populateTimeSlots(slots) {
-    const select = document.getElementById('appointment_time');
-    select.innerHTML = '<option value="">Seleccionar hora...</option>';
-    
-    slots.forEach(slot => {
-        const option = document.createElement('option');
-        option.value = slot.time;
-        option.textContent = slot.time;
-        option.disabled = !slot.available;
-        select.appendChild(option);
-    });
 }
 
 async function checkAvailability() {
