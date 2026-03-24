@@ -549,11 +549,12 @@ class AppointmentController extends Controller
                 ]);
             }
 
-            // Check work hours
-            $scheduleStart = $user->schedule_start ?? '08:00';
-            $scheduleEnd = $user->schedule_end ?? '17:00';
+            // Check work hours (compare as HH:mm to avoid seconds mismatch from DB)
+            $scheduleStart = substr($user->schedule_start ?? '08:00', 0, 5);
+            $scheduleEnd   = substr($user->schedule_end   ?? '17:00', 0, 5);
+            $slotTime      = substr($time, 0, 5);
 
-            if ($time < $scheduleStart || $time >= $scheduleEnd) {
+            if ($slotTime < $scheduleStart || $slotTime >= $scheduleEnd) {
                 return response()->json([
                     'available' => false,
                     'message' => 'El horario está fuera del horario de trabajo del doctor'
