@@ -380,7 +380,7 @@ async function loadDoctors() {
     }
 }
 
-function loadAvailableTimeSlots() {
+async function loadAvailableTimeSlots() {
     const doctorId = document.getElementById('doctor_id').value;
     const date = document.getElementById('appointment_date').value;
     const timeSelect = document.getElementById('appointment_time');
@@ -404,29 +404,40 @@ function loadAvailableTimeSlots() {
         return;
     }
 
-    // Generate slots
-    const slots = [];
+    // Generate all possible slots
     const duration = parseInt(schedule.consultation_duration) || 30;
     let current = timeToMinutes(schedule.schedule_start || '08:00');
     const end = timeToMinutes(schedule.schedule_end || '17:00');
     const breakStart = schedule.break_start ? timeToMinutes(schedule.break_start) : null;
     const breakEnd   = schedule.break_end   ? timeToMinutes(schedule.break_end)   : null;
+    const allSlots = [];
 
     while (current + duration <= end) {
-        // Skip break
         if (breakStart !== null && current < breakEnd && current + duration > breakStart) {
             current = breakEnd;
             continue;
         }
-        slots.push(minutesToTime(current));
+        allSlots.push(minutesToTime(current));
         current += duration;
     }
 
-    if (slots.length === 0) {
-        timeSelect.innerHTML = '<option value="">No hay horarios disponibles</option>';
+    // Fetch already booked times for this doctor+date
+    let booked = [];
+    try {
+        const res = await fetch(`/api/appointments/booked-slots?doctor_id=${doctorId}&date=${date}`, {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin'
+        });
+        if (res.ok) booked = (await res.json()).booked || [];
+    } catch (_) {}
+
+    const available = allSlots.filter(t => !booked.includes(t));
+
+    if (available.length === 0) {
+        timeSelect.innerHTML = '<option value="">No hay horarios disponibles para este día</option>';
     } else {
         timeSelect.innerHTML = '<option value="">Seleccionar hora...</option>' +
-            slots.map(t => `<option value="${t}">${t}</option>`).join('');
+            available.map(t => `<option value="${t}">${t}</option>`).join('');
     }
 }
 

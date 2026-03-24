@@ -525,6 +525,7 @@ Route::middleware('auth:web')->group(function () {
         // Availability checking routes (must be before /{appointment} to avoid wildcard conflict)
         Route::post('/api/appointments/check-availability', [AppointmentController::class, 'checkAvailability']);
         Route::get('/api/appointments/available-slots', [AppointmentController::class, 'getAvailableSlots']);
+        Route::get('/api/appointments/booked-slots', [AppointmentController::class, 'bookedSlots']);
 
         Route::get('/api/appointments/{appointment}', [AppointmentController::class, 'show']);
         Route::put('/api/appointments/{appointment}', [AppointmentController::class, 'update']);

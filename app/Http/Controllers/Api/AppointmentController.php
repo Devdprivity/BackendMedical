@@ -699,4 +699,37 @@ class AppointmentController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Return booked times for a doctor on a given date (for client-side slot filtering)
+     */
+    public function bookedSlots(Request $request): JsonResponse
+    {
+        $request->validate([
+            'doctor_id' => 'required|exists:users,id',
+            'date'      => 'required|date',
+        ]);
+
+        $doctorUser = \App\Models\User::find($request->doctor_id);
+        $doctorRecord = $doctorUser?->doctor;
+
+        if (!$doctorRecord) {
+            return response()->json(['booked' => []]);
+        }
+
+        $booked = Appointment::where('doctor_id', $doctorRecord->id)
+            ->where('status', '!=', 'cancelled')
+            ->where(function ($q) use ($request) {
+                $q->where('appointment_date', $request->date)
+                  ->orWhereDate('date_time', $request->date);
+            })
+            ->get()
+            ->map(fn($a) => $a->appointment_time
+                ? substr($a->appointment_time, 0, 5)
+                : \Carbon\Carbon::parse($a->date_time)->format('H:i'))
+            ->filter()
+            ->values();
+
+        return response()->json(['booked' => $booked]);
+    }
 }
