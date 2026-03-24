@@ -154,17 +154,28 @@ class AppointmentController extends Controller
             ], 422);
         }
 
+        // Resolve the actual doctors.id from the user_id
+        // appointments.doctor_id references the doctors table, not users
+        $doctorUser = \App\Models\User::find($request->doctor_id);
+        $doctorRecord = $doctorUser?->doctor;
+        if (!$doctorRecord) {
+            return response()->json([
+                'message' => 'El doctor no tiene un perfil médico completo. Contacte al administrador.',
+                'errors' => ['doctor_id' => ['Perfil de doctor no encontrado']]
+            ], 422);
+        }
+        $resolvedDoctorId = $doctorRecord->id;
+
         // Get doctor's clinic if not provided
         $clinicId = $request->clinic_id;
         if (!$clinicId) {
-            $doctor = \App\Models\User::find($request->doctor_id);
-            $clinicId = $doctor->clinic_id ?? 1; // Default clinic
+            $clinicId = $doctorUser->clinic_id ?? 1; // Default clinic
         }
 
         // Create appointment with unified format
         $appointmentData = [
             'patient_id' => $request->patient_id,
-            'doctor_id' => $request->doctor_id,
+            'doctor_id' => $resolvedDoctorId,
             'clinic_id' => $clinicId,
             'appointment_date' => $request->appointment_date,
             'appointment_time' => $request->appointment_time,
@@ -181,9 +192,8 @@ class AppointmentController extends Controller
         $appointment = Appointment::create($appointmentData);
 
         // Ensure doctor-patient relationship exists
-        $doctor = \App\Models\Doctor::find($request->doctor_id);
-        if ($doctor) {
-            $doctor->ensurePatientRelationship($request->patient_id, 'consulting');
+        if ($doctorRecord) {
+            $doctorRecord->ensurePatientRelationship($request->patient_id, 'consulting');
         }
 
         return response()->json([
