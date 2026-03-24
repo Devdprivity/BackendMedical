@@ -17,7 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\CheckOnboarding::class,
         ]);
 
-        // Add StartSession to API middleware so auth:web guard can read sessions
+        // Add cookie decryption + session to API middleware so auth:web guard can read sessions
+        $middleware->api(prepend: [
+            \Illuminate\Cookie\Middleware\EncryptCookies::class,
+        ]);
         $middleware->api(append: [
             \Illuminate\Session\Middleware\StartSession::class,
         ]);
