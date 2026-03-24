@@ -110,8 +110,19 @@ class UserSubscription extends Model
             return 0;
         }
 
-        $hoursRemaining = now()->diffInHours($this->trial_ends_at, false);
-        return max(0, $hoursRemaining);
+        return max(0, now()->diffInHours($this->trial_ends_at, false));
+    }
+
+    /**
+     * Get trial days remaining.
+     */
+    public function getTrialDaysRemainingAttribute(): int
+    {
+        if (!$this->trial_ends_at || $this->trial_ends_at <= now()) {
+            return 0;
+        }
+
+        return max(0, now()->diffInDays($this->trial_ends_at, false));
     }
 
     /**
