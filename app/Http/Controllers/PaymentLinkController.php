@@ -314,7 +314,7 @@ class PaymentLinkController extends Controller
         $qrCode = $paymentLink->generateQrCode(300);
         
         return response($qrCode)
-               ->header('Content-Type', 'image/png')
+               ->header('Content-Type', 'image/svg+xml')
                ->header('Cache-Control', 'public, max-age=3600');
     }
 

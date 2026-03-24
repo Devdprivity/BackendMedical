@@ -217,8 +217,7 @@ class PaymentLink extends Model
     public function generateQrCode($size = 200)
     {
         return QrCode::size($size)
-                    ->format('png')
-                    ->generate($this->getPaymentUrl());
+                    ->generate($this->getPaymentUrl()); // SVG (default) - no imagick/gd required
     }
 
     /**
