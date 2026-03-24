@@ -16,6 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\CheckOnboarding::class,
         ]);
+
+        // Add StartSession to API middleware so auth:web guard can read sessions
+        $middleware->api(append: [
+            \Illuminate\Session\Middleware\StartSession::class,
+        ]);
         
         // Alias middleware
         $middleware->alias([
