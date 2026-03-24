@@ -43,7 +43,7 @@
                     <label for="schedule_start" class="form-label required">Hora de Inicio</label>
                     <input type="time" class="form-control @error('schedule_start') is-invalid @enderror" 
                            id="schedule_start" name="schedule_start" 
-                           value="{{ old('schedule_start', $user->schedule_start ?? '09:00') }}" required>
+                           value="{{ old('schedule_start', $user->schedule_start ? substr($user->schedule_start, 0, 5) : '09:00') }}" required>
                     @error('schedule_start')
                         <small class="form-text" style="color: var(--danger);">{{ $message }}</small>
                     @enderror
@@ -53,7 +53,7 @@
                     <label for="schedule_end" class="form-label required">Hora de Fin</label>
                     <input type="time" class="form-control @error('schedule_end') is-invalid @enderror" 
                            id="schedule_end" name="schedule_end" 
-                           value="{{ old('schedule_end', $user->schedule_end ?? '17:00') }}" required>
+                           value="{{ old('schedule_end', $user->schedule_end ? substr($user->schedule_end, 0, 5) : '17:00') }}" required>
                     @error('schedule_end')
                         <small class="form-text" style="color: var(--danger);">{{ $message }}</small>
                     @enderror
@@ -107,7 +107,7 @@
                     <label for="break_start" class="form-label">Inicio del Descanso</label>
                     <input type="time" class="form-control @error('break_start') is-invalid @enderror" 
                            id="break_start" name="break_start" 
-                           value="{{ old('break_start', $user->break_start ?? '13:00') }}">
+                           value="{{ old('break_start', $user->break_start ? substr($user->break_start, 0, 5) : '13:00') }}">
                     @error('break_start')
                         <small class="form-text" style="color: var(--danger);">{{ $message }}</small>
                     @enderror
@@ -117,7 +117,7 @@
                     <label for="break_end" class="form-label">Fin del Descanso</label>
                     <input type="time" class="form-control @error('break_end') is-invalid @enderror" 
                            id="break_end" name="break_end" 
-                           value="{{ old('break_end', $user->break_end ?? '14:00') }}">
+                           value="{{ old('break_end', $user->break_end ? substr($user->break_end, 0, 5) : '14:00') }}">
                     @error('break_end')
                         <small class="form-text" style="color: var(--danger);">{{ $message }}</small>
                     @enderror

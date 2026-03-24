@@ -127,6 +127,14 @@ class OnboardingController extends Controller
      */
     public function updateSchedule(Request $request)
     {
+        // Strip seconds if browser sends "HH:mm:ss" (MySQL TIME format)
+        $request->merge([
+            'schedule_start' => $request->schedule_start ? substr($request->schedule_start, 0, 5) : null,
+            'schedule_end'   => $request->schedule_end   ? substr($request->schedule_end, 0, 5)   : null,
+            'break_start'    => $request->break_start    ? substr($request->break_start, 0, 5)    : null,
+            'break_end'      => $request->break_end      ? substr($request->break_end, 0, 5)      : null,
+        ]);
+
         $request->validate([
             'schedule_start' => 'required|date_format:H:i',
             'schedule_end' => 'required|date_format:H:i|after:schedule_start',
