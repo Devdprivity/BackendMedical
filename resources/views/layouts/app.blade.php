@@ -801,9 +801,13 @@
                     </div>
                 </div>
                 <div class="dropdown-divider"></div>
-                <a href="{{ route('subscription.plans') }}" class="dropdown-item">
+                <a href="{{ route('subscription.dashboard') }}" class="dropdown-item">
                     <i class="fas fa-crown"></i>
-                    Gestionar Suscripción
+                    Mi Suscripción
+                </a>
+                <a href="{{ route('subscription.plans') }}" class="dropdown-item">
+                    <i class="fas fa-list"></i>
+                    Ver Planes
                 </a>
                 <a href="{{ route('profile.show') }}" class="dropdown-item">
                     <i class="fas fa-user"></i>
@@ -996,8 +1000,10 @@
         async function loadUserPlan() {
             try {
                 const response = await fetch('/api/subscription/status', {
+                    credentials: 'same-origin',
                     headers: {
                         'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     }
                 });
@@ -1024,34 +1030,38 @@
             
             switch (subscriptionData.status) {
                 case 'trial':
-                    badgeClass = 'trial';
-                    badgeText = `Prueba (${subscriptionData.trial_days_remaining || 0}d)`;
-                    badgeIcon = '⚡';
+                    const hours = subscriptionData.trial_hours_remaining || 0;
+                    const days  = subscriptionData.trial_days_remaining  || 0;
+                    const timeStr = days > 0 ? `${days}d` : `${hours}h`;
+                    badgeClass = hours <= 2 ? 'expired' : 'trial';
+                    badgeText  = `Prueba (${timeStr})`;
+                    badgeIcon  = '⚡';
                     break;
                 case 'active':
-                    badgeClass = subscriptionData.plan?.slug || 'active';
-                    badgeText = subscriptionData.plan?.name || 'Plan Activo';
-                    badgeIcon = '✓';
+                    const daysLeft = subscriptionData.days_remaining || 0;
+                    badgeClass = daysLeft <= 7 ? 'trial' : (subscriptionData.plan?.slug || 'active');
+                    badgeText  = subscriptionData.plan?.name || 'Plan Activo';
+                    badgeIcon  = '✓';
                     break;
                 case 'expired':
                     badgeClass = 'expired';
-                    badgeText = 'Plan Expirado';
-                    badgeIcon = '⚠';
+                    badgeText  = 'Plan Expirado';
+                    badgeIcon  = '⚠';
                     break;
                 case 'cancelled':
                     badgeClass = 'expired';
-                    badgeText = 'Plan Cancelado';
-                    badgeIcon = '⚠';
+                    badgeText  = 'Plan Cancelado';
+                    badgeIcon  = '⚠';
                     break;
                 case 'none':
                     badgeClass = 'free';
-                    badgeText = 'Sin Plan';
-                    badgeIcon = '🆓';
+                    badgeText  = 'Sin Plan';
+                    badgeIcon  = '🆓';
                     break;
                 default:
                     badgeClass = 'free';
-                    badgeText = 'Plan Gratuito';
-                    badgeIcon = '🆓';
+                    badgeText  = 'Sin Plan';
+                    badgeIcon  = '🆓';
                     break;
             }
             
