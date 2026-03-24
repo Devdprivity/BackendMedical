@@ -88,6 +88,13 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeCreateLinkModal();
 });
 
+function openCreateModal() {
+    const modal = document.getElementById('createLinkModal');
+    if (modal && typeof bootstrap !== 'undefined') {
+        bootstrap.Modal.getOrCreateInstance(modal).show();
+    }
+}
+
 function initializeCreateLinkModal() {
     setupModalEventListeners();
     
