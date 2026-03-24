@@ -562,15 +562,6 @@ class AppointmentController extends Controller
                 ], 404);
             }
 
-            // Obtener el registro de doctor desde la tabla doctors
-            $doctorRecord = $user->doctor;
-            if (!$doctorRecord) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Registro de doctor no encontrado'
-                ], 404);
-            }
-
             // Check if doctor works on this day
             $dayOfWeek = strtolower(\Carbon\Carbon::parse($date)->format('l'));
 
