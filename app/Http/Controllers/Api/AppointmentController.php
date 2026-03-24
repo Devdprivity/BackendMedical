@@ -453,47 +453,44 @@ class AppointmentController extends Controller
         }
 
         $doctorRecord = $user->doctor;
-        if (!$doctorRecord) {
-            return response()->json([
-                'available' => false,
-                'message' => 'Registro de doctor no encontrado'
-            ]);
-        }
+        $doctorId = $doctorRecord?->id;
 
-        $doctorId = $doctorRecord->id; // This is the actual doctor_id for appointments table
+        $conflictingAppointment = null;
 
-        // Combine date and time
-        $dateTime = $date . ' ' . $time;
-        $appointmentStart = $dateTime;
-        $appointmentEnd = date('Y-m-d H:i:s', strtotime($appointmentStart . ' +' . $duration . ' minutes'));
+        if ($doctorId) {
+            // Combine date and time
+            $dateTime = $date . ' ' . $time;
+            $appointmentStart = $dateTime;
+            $appointmentEnd = date('Y-m-d H:i:s', strtotime($appointmentStart . ' +' . $duration . ' minutes'));
 
-        // Check for conflicts in both date_time and appointment_date/appointment_time formats
-        $conflictQuery = Appointment::where('doctor_id', $doctorId)
-            ->where('status', '!=', 'cancelled')
-            ->where(function($query) use ($appointmentStart, $appointmentEnd, $date, $time, $duration) {
-                // Check old format (date_time)
-                $query->where(function($q) use ($appointmentStart, $appointmentEnd) {
-                    $q->whereNotNull('date_time')
-                      ->where(function($subQ) use ($appointmentStart, $appointmentEnd) {
-                          $subQ->whereBetween('date_time', [$appointmentStart, $appointmentEnd])
-                               ->orWhere(function($conflictQ) use ($appointmentStart, $appointmentEnd) {
-                                   $conflictQ->where('date_time', '<=', $appointmentStart)
-                                            ->whereRaw("date_time + INTERVAL '1 minute' * COALESCE(duration, 30) > ?", [$appointmentStart]);
-                               });
-                      });
-                })
-                // Check new format (appointment_date + appointment_time)
-                ->orWhere(function($q) use ($date, $time, $duration) {
-                    $q->where('appointment_date', $date)
-                      ->where('appointment_time', $time);
+            // Check for conflicts in both date_time and appointment_date/appointment_time formats
+            $conflictQuery = Appointment::where('doctor_id', $doctorId)
+                ->where('status', '!=', 'cancelled')
+                ->where(function($query) use ($appointmentStart, $appointmentEnd, $date, $time, $duration) {
+                    // Check old format (date_time)
+                    $query->where(function($q) use ($appointmentStart, $appointmentEnd) {
+                        $q->whereNotNull('date_time')
+                          ->where(function($subQ) use ($appointmentStart, $appointmentEnd) {
+                              $subQ->whereBetween('date_time', [$appointmentStart, $appointmentEnd])
+                                   ->orWhere(function($conflictQ) use ($appointmentStart, $appointmentEnd) {
+                                       $conflictQ->where('date_time', '<=', $appointmentStart)
+                                                ->whereRaw("date_time + INTERVAL '1 minute' * COALESCE(duration, 30) > ?", [$appointmentStart]);
+                                   });
+                          });
+                    })
+                    // Check new format (appointment_date + appointment_time)
+                    ->orWhere(function($q) use ($date, $time, $duration) {
+                        $q->where('appointment_date', $date)
+                          ->where('appointment_time', $time);
+                    });
                 });
-            });
 
-        if ($excludeId) {
-            $conflictQuery->where('id', '!=', $excludeId);
+            if ($excludeId) {
+                $conflictQuery->where('id', '!=', $excludeId);
+            }
+
+            $conflictingAppointment = $conflictQuery->first();
         }
-
-        $conflictingAppointment = $conflictQuery->first();
 
         if ($conflictingAppointment) {
             return response()->json([
