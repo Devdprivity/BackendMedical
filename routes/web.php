@@ -743,7 +743,12 @@ Route::middleware('auth:web')->group(function () {
 
     // Payment Methods API - Role-based access
     Route::middleware(['check.role:admin,doctor'])->group(function () {
-        // Payment methods API routes are handled in routes/api.php
+        // Payment methods CRUD
+        Route::get('/api/payment-methods', [PaymentMethodController::class, 'index']);
+        Route::post('/api/payment-methods', [PaymentMethodController::class, 'store']);
+        Route::get('/api/payment-methods/{id}', [PaymentMethodController::class, 'show']);
+        Route::put('/api/payment-methods/{id}', [PaymentMethodController::class, 'update']);
+        Route::delete('/api/payment-methods/{id}', [PaymentMethodController::class, 'destroy']);
 
         // Payment link generation
         Route::post('/api/payment-methods/generate-link', [PaymentMethodController::class, 'generatePaymentLink'])
