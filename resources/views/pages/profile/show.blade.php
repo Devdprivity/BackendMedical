@@ -240,7 +240,7 @@
                             <i class="fas fa-external-link-alt"></i>
                             Ver Página de Reservas
                         </a>
-                        <button onclick="copyBookingUrl()" class="btn btn-outline" style="font-size: 0.875rem;">
+                        <button onclick="copyBookingUrl(this)" class="btn btn-outline" style="font-size: 0.875rem;">
                             <i class="fas fa-copy"></i>
                         </button>
                     </div>
@@ -662,12 +662,11 @@ async function enableBookingFromProfile() {
     }
 }
 
-function copyBookingUrl() {
+function copyBookingUrl(button) {
     const url = '{{ $user->booking_slug ? url("/booking/" . $user->booking_slug) : "" }}';
     if (url) {
         navigator.clipboard.writeText(url).then(() => {
             // Show temporary success message
-            const button = event.target.closest('button');
             const originalHTML = button.innerHTML;
             button.innerHTML = '<i class="fas fa-check"></i>';
             button.style.background = 'var(--success)';
