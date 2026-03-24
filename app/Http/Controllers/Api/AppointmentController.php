@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
+use App\Models\Doctor;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -158,9 +159,28 @@ class AppointmentController extends Controller
         // appointments.doctor_id references the doctors table, not users
         $doctorUser = \App\Models\User::find($request->doctor_id);
         $doctorRecord = $doctorUser?->doctor;
+
+        // Auto-create doctors record if missing (uses profile data from users table)
+        if (!$doctorRecord && $doctorUser) {
+            $doctorRecord = \App\Models\Doctor::create([
+                'user_id'          => $doctorUser->id,
+                'name'             => trim(($doctorUser->first_name ?? '') . ' ' . ($doctorUser->last_name ?? '')),
+                'specialty'        => $doctorUser->specialty ?? 'General',
+                'license_number'   => $doctorUser->medical_license ?? 'LIC-' . $doctorUser->id,
+                'email'            => $doctorUser->email,
+                'phone'            => $doctorUser->phone ?? '',
+                'address'          => $doctorUser->address ?? '',
+                'experience_years' => $doctorUser->years_experience ?? 0,
+                'education'        => json_encode([]),
+                'certifications'   => json_encode([]),
+                'languages'        => json_encode(['Español']),
+                'status'           => 'active',
+            ]);
+        }
+
         if (!$doctorRecord) {
             return response()->json([
-                'message' => 'El doctor no tiene un perfil médico completo. Contacte al administrador.',
+                'message' => 'No se pudo resolver el perfil del doctor.',
                 'errors' => ['doctor_id' => ['Perfil de doctor no encontrado']]
             ], 422);
         }
