@@ -521,12 +521,13 @@ Route::middleware('auth:web')->group(function () {
     // Appointments API - Role-based access
     Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
         Route::get('/api/appointments', [AppointmentController::class, 'index']);
-        Route::get('/api/appointments/{appointment}', [AppointmentController::class, 'show']);
-        Route::put('/api/appointments/{appointment}', [AppointmentController::class, 'update']);
 
-        // Availability checking routes
+        // Availability checking routes (must be before /{appointment} to avoid wildcard conflict)
         Route::post('/api/appointments/check-availability', [AppointmentController::class, 'checkAvailability']);
         Route::get('/api/appointments/available-slots', [AppointmentController::class, 'getAvailableSlots']);
+
+        Route::get('/api/appointments/{appointment}', [AppointmentController::class, 'show']);
+        Route::put('/api/appointments/{appointment}', [AppointmentController::class, 'update']);
     });
 
     Route::middleware(['check.role:admin,doctor,nurse,receptionist', 'check.subscription.limits:add_appointment'])->group(function () {
