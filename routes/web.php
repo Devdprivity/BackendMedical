@@ -853,6 +853,11 @@ Route::prefix('room')->name('video-calls.public.')->group(function () {
     Route::post('/api/{videoCall}/join-guest', [App\Http\Controllers\VideoCallController::class, 'joinAsGuest'])->name('join-guest');
 });
 
+// Users API (web session auth - for frontend filters)
+Route::middleware(['auth:web', 'check.role:admin,doctor,nurse,receptionist'])->group(function () {
+    Route::get('/api/users/basic', [UserController::class, 'basicList'])->name('web.users.basic');
+});
+
 // Video Call Routes - Authenticated users only
 Route::middleware('auth:web')->group(function () {
     // Video call management - Doctors and admins

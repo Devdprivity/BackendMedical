@@ -116,11 +116,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Routes for web interface (using web session authentication)
 Route::middleware(['auth:web'])->group(function () {
-    // Users - Basic list for filters (available to medical staff)
-    Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
-        Route::get('/users/basic', [App\Http\Controllers\Api\UserController::class, 'basicList']);
-    });
-
     // Appointment functionality for web interface
     Route::middleware(['check.role:admin,doctor,nurse,receptionist'])->group(function () {
         Route::get('appointments/available-slots', [AppointmentController::class, 'getAvailableSlots'])->name('api.appointments.available-slots');
