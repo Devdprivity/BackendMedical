@@ -746,9 +746,9 @@ Route::middleware('auth:web')->group(function () {
         // Payment methods CRUD
         Route::get('/api/payment-methods', [PaymentMethodController::class, 'index']);
         Route::post('/api/payment-methods', [PaymentMethodController::class, 'store']);
-        Route::get('/api/payment-methods/{id}', [PaymentMethodController::class, 'show']);
-        Route::put('/api/payment-methods/{id}', [PaymentMethodController::class, 'update']);
-        Route::delete('/api/payment-methods/{id}', [PaymentMethodController::class, 'destroy']);
+        Route::get('/api/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'show']);
+        Route::put('/api/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'update']);
+        Route::delete('/api/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'destroy']);
 
         // Payment link generation
         Route::post('/api/payment-methods/generate-link', [PaymentMethodController::class, 'generatePaymentLink'])
